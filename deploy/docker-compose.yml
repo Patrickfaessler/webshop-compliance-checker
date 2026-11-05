@@ -1,0 +1,17 @@
+# Reference environment (specs/07-architecture.md, N1).
+# Only PostgreSQL is active for now. Services are added with their milestones:
+#   M1: testshop (WooCommerce)    M2: api, worker, chromium, egress proxy
+services:
+  postgres:
+    image: postgres:16
+    environment:
+      POSTGRES_USER: checker
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-checker-dev-only}
+      POSTGRES_DB: checker
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+
+volumes:
+  pgdata:

@@ -1,0 +1,164 @@
+openapi: 3.0.3
+info:
+  title: Compliance Checker API (working title)
+  version: 0.1.0-draft
+  description: |
+    Contract between the Flutter app and the Go API. No authentication: a scan is addressed by its
+    unguessable id (ADR-1). Spec refs: F1, F7, F8, F10, F11, F12.
+servers:
+  - url: http://localhost:8080
+paths:
+  /api/scans:
+    post:
+      summary: Start a scan (F1)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ScanRequest' }
+      responses:
+        '202':
+          description: Accepted
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ScanStatus' }
+        '400': { $ref: '#/components/responses/Problem' }
+        '429': { $ref: '#/components/responses/Problem' }
+  /api/scans/{id}:
+    get:
+      summary: Status, progress and score
+      parameters: [ { $ref: '#/components/parameters/ScanId' } ]
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ScanStatus' }
+        '404': { $ref: '#/components/responses/Problem' }
+  /api/scans/{id}/findings:
+    get:
+      summary: Findings, filterable (F7)
+      parameters:
+        - { $ref: '#/components/parameters/ScanId' }
+        - { name: severity, in: query, schema: { type: string, enum: [critical, warning, notice] } }
+        - { name: rule, in: query, schema: { type: string, example: R6 } }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ruleResults:
+                    type: array
+                    items: { $ref: '#/components/schemas/RuleResult' }
+                  findings:
+                    type: array
+                    items: { $ref: '#/components/schemas/Finding' }
+  /api/findings/{id}:
+    get:
+      summary: Finding detail with location and screenshot (F8)
+      parameters: [ { name: id, in: path, required: true, schema: { type: string } } ]
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/FindingDetail' }
+  /api/findings/{id}/suggestion:
+    post:
+      summary: Get fix suggestion (template first, Claude only if no template, D-3)
+      parameters: [ { name: id, in: path, required: true, schema: { type: string } } ]
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Suggestion' }
+  /api/scans/{id}/report.pdf:
+    get:
+      summary: PDF export (F10)
+      parameters: [ { $ref: '#/components/parameters/ScanId' } ]
+      responses:
+        '200':
+          description: PDF
+          content:
+            application/pdf:
+              schema: { type: string, format: binary }
+components:
+  parameters:
+    ScanId:
+      name: id
+      in: path
+      required: true
+      schema: { type: string, description: 'random 128-bit id, URL-safe' }
+  responses:
+    Problem:
+      description: Error (RFC 9457 problem details; `title` is a German user message)
+      content:
+        application/problem+json:
+          schema:
+            type: object
+            properties:
+              type: { type: string }
+              title: { type: string }
+              status: { type: integer }
+              retryAfterSeconds: { type: integer }
+  schemas:
+    ScanRequest:
+      type: object
+      required: [url]
+      properties:
+        url: { type: string, format: uri }
+        areas:
+          type: array
+          items: { type: string, enum: [accessibility, legal] }
+          default: [accessibility, legal]
+        previousScanId: { type: string, description: 'F9 re-scan comparison' }
+    ScanStatus:
+      type: object
+      properties:
+        id: { type: string }
+        status: { type: string, enum: [queued, running, done, incomplete, failed] }
+        queuePosition: { type: integer }
+        pagesDone: { type: integer }
+        pagesTotal: { type: integer }
+        score: { type: integer, minimum: 0, maximum: 100, nullable: true }
+        expiresAt: { type: string, format: date-time }
+        errorDe: { type: string, description: 'German reason when status = failed' }
+        disclaimerDe: { type: string }
+    RuleResult:
+      type: object
+      properties:
+        ruleId: { type: string }
+        state: { type: string, enum: [passed, failed, not_applicable, not_assessable] }
+        decidedBy: { type: string, enum: [structural, dictionary, pattern, ai] }
+        pagesAffected: { type: integer }
+        previousState: { type: string, nullable: true }
+    Finding:
+      type: object
+      properties:
+        id: { type: string }
+        ruleId: { type: string }
+        severity: { type: string, enum: [critical, warning, notice] }
+        url: { type: string }
+        summaryDe: { type: string }
+    FindingDetail:
+      allOf:
+        - $ref: '#/components/schemas/Finding'
+        - type: object
+          properties:
+            explanationDe: { type: string }
+            selector: { type: string }
+            snippet: { type: string }
+            evidenceQuote: { type: string, nullable: true }
+            screenshotUrl: { type: string, nullable: true }
+            legalBasis: { type: array, items: { type: string } }
+    Suggestion:
+      type: object
+      properties:
+        origin: { type: string, enum: [template, ai] }
+        textDe: { type: string }
+        code: { type: string, nullable: true }
+        reviewNoticeDe: { type: string, nullable: true, description: 'set when origin = ai' }

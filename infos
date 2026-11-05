@@ -1,0 +1,87 @@
+Projektskizzen Software Praktikum
+Gruppe 9 - Fässler/Kahraman
+
+Projektspezifikation – Version 1
+Software-Praktikum WS 2026/27 · Stand: 28.10.2026
+Wir beschreiben im Folgenden beide Projektideen als erste Spezifikation inklusive UI-Skizzen. Nach Ihrer Rückmeldung arbeiten wir die gewählte Variante weiter aus. Ein Produktname steht noch nicht fest.
+Idee 1: Compliance-Checker für Webshops
+1. Kurzbeschreibung
+Das Tool scannt einen Webshop automatisch, findet Probleme bei der Barrierefreiheit (WCAG 2.1 AA / European Accessibility Act) und bei rechtlichen Pflichtangaben (Impressum, Datenschutz, Cookie-Einwilligung, AGB/Widerruf, Bestellbutton). Jedes Problem wird in einfacher Sprache erklärt und mit einem konkreten Code- bzw. Textvorschlag ergänzt.
+2. Zielgruppe und Nutzen
+Primär: Betreiber:innen kleiner Webshops (z. B. Shopify, WooCommerce) ohne eigene Entwickler:innen
+Sekundär: Webagenturen, die viele Kundenshops betreuen
+Nutzen: Seit Juni 2025 gilt der EAA; bestehende Tools melden Probleme meist nur, unser Tool liefert zusätzlich die Lösung
+Geschäftsmodell: Abo pro Shop, Agentur-Tarif für mehrere Shops
+3. Funktionale Anforderungen
+ID
+Anforderung
+Priorität
+F1
+Shop-URL eingeben und Scan starten; Auswahl der Prüfbereiche
+Muss
+F2
+Crawler besucht bis zu N Seiten inkl. Produktseiten, Warenkorb und Checkout
+Muss
+F3
+Automatische WCAG-Prüfungen (Kontrast, Alt-Texte, Labels, Tastaturbedienung, Überschriftenstruktur)
+Muss
+F4
+Prüfung Impressum (ECG §5, MedienG §25): Pflichtfelder vorhanden?
+Muss
+F5
+Prüfung Datenschutzerklärung und Cookie-Banner; Erkennen von Trackern, die vor der Einwilligung laden
+Muss
+F6
+Prüfung AGB/Widerrufsbelehrung und Beschriftung des Bestellbuttons („zahlungspflichtig bestellen“)
+Muss
+F7
+Bericht mit Score, Schweregrad (kritisch/Warnung/bestanden) und Liste aller Probleme
+Muss
+F8
+Detailansicht pro Problem: Erklärung, Screenshot, KI-generierter Code- oder Textvorschlag
+Muss
+F9
+Probleme als erledigt markieren, erneuter Scan zeigt Verbesserung
+Soll
+F10
+PDF-Export des Berichts
+Soll
+F11
+Regelmäßiger automatischer Scan mit E-Mail-Benachrichtigung
+Kann
+
+4. Nicht-funktionale Anforderungen
+Performance: Scan von 50 Seiten in unter 5 Minuten
+Verständlichkeit: Erklärungen ohne Fachjargon, auf Deutsch
+Ehrlichkeit: Klarer Hinweis, dass automatische Checks nur einen Teil der Probleme finden und keine Rechtsberatung ersetzen
+Datenschutz: Es werden nur öffentlich zugängliche Seiten gescannt, keine Kundendaten gespeichert
+Erweiterbarkeit: Prüfregeln als eigene Module, damit neue Regeln leicht ergänzt werden können
+5. Ablauf (User Flow)
+1. Nutzer:in gibt die Shop-URL ein und wählt die Prüfbereiche
+2. System crawlt den Shop und führt die Prüfungen aus (Fortschrittsanzeige)
+3. Bericht mit Übersicht und Problemliste wird angezeigt
+4. Nutzer:in öffnet ein Problem, liest die Erklärung und kopiert den Vorschlag
+5. Nach der Korrektur wird erneut gescannt
+6. Technische Umsetzung (geplant)
+Frontend: Web-App (Flutter)
+Backend:Go, Job-Queue für Scans
+Crawling/Rendering: Playwright (Headless-Browser), damit auch JavaScript-Inhalte und Cookie-Banner geprüft werden
+Barrierefreiheit: axe-core als Basis, ergänzt um eigene Regeln
+Rechtliche Checks: regelbasierte Prüfung + Sprachmodell zum Finden und Bewerten der Pflichtangaben
+Vorschläge: Sprachmodell erzeugt Code-/Textvorschläge auf Basis von Problem und HTML-Ausschnitt
+Datenbank: PostgreSQL für Shops, Scans und Ergebnisse
+7. Abgrenzung
+Keine verbindliche Rechtsberatung und keine Garantie auf vollständige Konformität
+Code-Vorschläge werden nicht automatisch in den Shop eingespielt
+Manuelle WCAG-Prüfungen (z. B. Screenreader-Tests) sind nicht Teil des Tools
+8. Erster Test
+Zehn lokale Webshops (z. B. aus der Region Salzburg) kostenlos prüfen, Ergebnisse mit manueller Prüfung vergleichen und erheben, wer für die Lösungsvorschläge zahlen würde.
+9. UI-Skizzen
+
+(1) MVP auf einen definierten Shoptyp und ausgewählte automatische Prüfregeln begrenzen. Je Regel Eingabe, Prüflogik, Fundstelle und erwartetes Ergebnis festlegen; „bestanden“, „nicht anwendbar“ und „nicht automatisch beurteilbar“ unterscheiden. Score und Schweregrade nachvollziehbar definieren, ohne daraus vollständige Konformität abzuleiten.
+
+(2) Rechtsraum, Regelquellen/-versionen und Anwendbarkeitsbedingungen festhalten und fachlich prüfen lassen. Vorhandensein einer Erklärung und inhaltliche Rechtskonformität getrennt behandeln; KI-Ausgaben als prüfbedürftige Vorschläge mit Belegen ausweisen.
+
+(3) Crawler präzisieren: N/Domain-Grenzen, dynamische Seiten, Zeitlimits und Checkout-Zustände. Checkout zunächst in einem Testshop mit Testdaten und ohne Bestellabschluss prüfen. Cookie-Prüfung mit definierten Browserzuständen vor/nach Zustimmung bzw. Ablehnung; Tracker-Erkennung und Unsicherheiten erklären. URL-Zugriffe gegen interne Netzadressen absichern.
+
+(4) Zehn reale Shops und Zahlungsbereitschaft sind noch kein reproduzierbarer Funktionstest. Ergänzend Testseiten mit gezielt eingebauten Fehlern und fehlerfreien Gegenbeispielen verwenden; Treffer, übersehene Fehler und Fehlalarme messen. KI-Korrekturen im Testshop erneut prüfen; für „50 Seiten unter 5 Minuten“ Umgebung und Umfang der KI-Aufrufe festlegen.

@@ -1,0 +1,23 @@
+# secrets
+.env
+deploy/.env
+
+# OS / editors
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+
+# Go
+backend/bin/
+*.test
+*.out
+
+# Flutter / Dart
+frontend/.dart_tool/
+frontend/build/
+frontend/.flutter-plugins*
+frontend/pubspec.lock
+
+# runtime data
+screenshots/

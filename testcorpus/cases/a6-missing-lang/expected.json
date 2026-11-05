@@ -1,0 +1,5 @@
+{
+  "spec": ["A6-2"],
+  "kind": "defect",
+  "expect": { "A6": "failed" }
+}

@@ -1,0 +1,5 @@
+{
+  "spec": ["A3-1"],
+  "kind": "clean",
+  "expect": { "A3": "passed" }
+}
