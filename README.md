@@ -64,6 +64,8 @@ You only enter your domain once.
 1. DNS: point `check`, `teehaus`, `radwerk` and `seifen` (or a wildcard `*`) of your domain at the server. Open ports 80 and 443.
 2. On the server: `git clone` the repo, then `cp deploy/.env.example deploy/.env` and set `DOMAIN=example.org` and `ACME_EMAIL=...`.
 3. `docker compose -f deploy/docker-compose.server.yml up -d --build`
+   If the server uses ufw, also run `sudo ufw allow 80/tcp; sudo ufw allow 443/tcp`. Visitors get through without it
+   (Docker bypasses ufw), but the scanner reaches the shops via the server's own public IP, and that path is filtered.
 
 | Address | What |
 | --- | --- |
