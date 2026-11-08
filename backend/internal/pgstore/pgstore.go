@@ -97,7 +97,7 @@ func (s *Store) ctx() (context.Context, context.CancelFunc) {
 	return context.WithTimeout(context.Background(), s.Timeout)
 }
 
-const scanColumns = `id, host, start_url, areas, status, pages_done, pages_total, score, error_de,
+const scanColumns = `id, host, target_key, start_url, areas, status, pages_done, pages_total, score, error_de,
 	previous_scan_id, created_at, finished_at, expires_at`
 
 // Create implements scan.Store.
@@ -146,8 +146,8 @@ func (s *Store) Update(id string, fn func(*scan.Scan)) bool {
 	fn(&after)
 	after.ID = id // the id is the key and never changes
 
-	if _, err := tx.Exec(ctx, `UPDATE scans SET host=$2, start_url=$3, areas=$4, status=$5, pages_done=$6,
-		pages_total=$7, score=$8, error_de=$9, previous_scan_id=$10, created_at=$11, finished_at=$12, expires_at=$13
+	if _, err := tx.Exec(ctx, `UPDATE scans SET host=$2, target_key=$3, start_url=$4, areas=$5, status=$6, pages_done=$7,
+		pages_total=$8, score=$9, error_de=$10, previous_scan_id=$11, created_at=$12, finished_at=$13, expires_at=$14
 		WHERE id=$1`, scanArgs(after)...); err != nil {
 		return false
 	}
@@ -165,12 +165,12 @@ func (s *Store) Update(id string, fn func(*scan.Scan)) bool {
 	return tx.Commit(ctx) == nil
 }
 
-// LatestForHost implements scan.Store.
-func (s *Store) LatestForHost(host string, since time.Time) (scan.Scan, bool) {
+// LatestForTarget implements scan.Store.
+func (s *Store) LatestForTarget(key string, since time.Time) (scan.Scan, bool) {
 	ctx, cancel := s.ctx()
 	defer cancel()
-	sc, err := loadScan(ctx, s.pool, `WHERE host = $1 AND status <> 'failed' AND created_at >= $2 AND expires_at > $3
-		ORDER BY created_at DESC LIMIT 1`, host, since, s.Now())
+	sc, err := loadScan(ctx, s.pool, `WHERE target_key = $1 AND status <> 'failed' AND created_at >= $2 AND expires_at > $3
+		ORDER BY created_at DESC LIMIT 1`, key, since, s.Now())
 	return sc, err == nil
 }
 
@@ -199,13 +199,13 @@ func scanArgs(sc scan.Scan) []any {
 	if areas == nil {
 		areas = []string{}
 	}
-	return []any{sc.ID, sc.Host, sc.StartURL, areas, string(sc.Status), sc.PagesDone, sc.PagesTotal, sc.Score,
+	return []any{sc.ID, sc.Host, sc.TargetKey, sc.StartURL, areas, string(sc.Status), sc.PagesDone, sc.PagesTotal, sc.Score,
 		sc.ErrorDe, sc.PreviousScanID, sc.CreatedAt, finished, sc.ExpiresAt}
 }
 
 func insertScan(ctx context.Context, tx pgx.Tx, sc scan.Scan) error {
 	_, err := tx.Exec(ctx, `INSERT INTO scans (`+scanColumns+`)
-		VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13)`, scanArgs(sc)...)
+		VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14)`, scanArgs(sc)...)
 	return err
 }
 
@@ -235,7 +235,7 @@ func loadScan(ctx context.Context, q querier, where string, args ...any) (scan.S
 		finished *time.Time
 	)
 	err := q.QueryRow(ctx, `SELECT `+scanColumns+` FROM scans `+where, args...).Scan(
-		&sc.ID, &sc.Host, &sc.StartURL, &sc.Areas, &status, &sc.PagesDone, &sc.PagesTotal, &sc.Score, &sc.ErrorDe,
+		&sc.ID, &sc.Host, &sc.TargetKey, &sc.StartURL, &sc.Areas, &status, &sc.PagesDone, &sc.PagesTotal, &sc.Score, &sc.ErrorDe,
 		&sc.PreviousScanID, &sc.CreatedAt, &finished, &sc.ExpiresAt)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return scan.Scan{}, errNotFound

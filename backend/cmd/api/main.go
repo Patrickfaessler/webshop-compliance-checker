@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"strconv"
 	"time"
 
 	"compliancechecker/internal/api"
@@ -75,7 +76,17 @@ func main() {
 	default:
 		log.Fatalf("unknown STORE=%q (use memory or postgres)", mode)
 	}
-	limiter := ratelimit.New(3, time.Hour, 1)
+	// C-RL: 3 scans per hour per client by default; RATE_LIMIT_PER_HOUR raises it for local testing.
+	perHour := 3
+	if v := os.Getenv("RATE_LIMIT_PER_HOUR"); v != "" {
+		n, err := strconv.Atoi(v)
+		if err != nil || n < 1 {
+			log.Fatalf("RATE_LIMIT_PER_HOUR must be a positive number, got %q", v)
+		}
+		perHour = n
+	}
+	limiter := ratelimit.New(perHour, time.Hour, 1)
+	log.Printf("rate limit: %d scans per hour per client, 1 at a time", perHour)
 	jobs := make(chan worker.Job, 32)
 
 	fetcher := fetch.New(nil)
@@ -111,9 +122,9 @@ func main() {
 
 	srv := &api.Server{
 		Store: store, Limiter: limiter, Jobs: jobs, Salt: salt,
-		HostCooldown: 10 * time.Minute, // C-RL
-		AllowOrigin:  os.Getenv("CORS_ORIGIN"),
-		RuleMeta:     ruleMeta,
+		TargetCooldown: 10 * time.Minute, // C-RL
+		AllowOrigin:    os.Getenv("CORS_ORIGIN"),
+		RuleMeta:       ruleMeta,
 	}
 	httpSrv := &http.Server{Addr: addr, Handler: srv.Handler(), ReadHeaderTimeout: 10 * time.Second}
 

@@ -5,6 +5,8 @@ package scan
 import (
 	"crypto/rand"
 	"encoding/base64"
+	"net/url"
+	"strings"
 	"sync"
 	"time"
 
@@ -49,6 +51,7 @@ type Finding struct {
 type Scan struct {
 	ID             string
 	Host           string
+	TargetKey      string // scheme://host/path of the start URL, the key of the cooldown (C-RL)
 	StartURL       string
 	Areas          []string
 	Status         Status
@@ -73,14 +76,14 @@ func NewID() (string, error) {
 	return base64.RawURLEncoding.EncodeToString(b), nil
 }
 
-// Store persists scans. A PostgreSQL implementation follows with the database milestone.
+// Store keeps scans: in memory by default (ADR-6), PostgreSQL optionally (ADR-5).
 type Store interface {
 	Create(s Scan) error
 	Get(id string) (Scan, bool)
 	// Update applies fn to the stored scan; false if it does not exist.
 	Update(id string, fn func(*Scan)) bool
-	// LatestForHost returns the newest non-failed scan of host created at or after since.
-	LatestForHost(host string, since time.Time) (Scan, bool)
+	// LatestForTarget returns the newest non-failed scan with this TargetKey created at or after since (C-RL).
+	LatestForTarget(key string, since time.Time) (Scan, bool)
 }
 
 // MemoryStore is an in-memory Store used until PostgreSQL is wired in and by tests.
@@ -141,13 +144,13 @@ func (m *MemoryStore) Purge() int {
 	return n
 }
 
-func (m *MemoryStore) LatestForHost(host string, since time.Time) (Scan, bool) {
+func (m *MemoryStore) LatestForTarget(key string, since time.Time) (Scan, bool) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	var best Scan
 	found := false
 	for _, s := range m.scans {
-		if s.Host != host || s.Status == Failed || s.CreatedAt.Before(since) {
+		if s.TargetKey != key || s.Status == Failed || s.CreatedAt.Before(since) {
 			continue
 		}
 		if !found || s.CreatedAt.After(best.CreatedAt) {
@@ -155,4 +158,15 @@ func (m *MemoryStore) LatestForHost(host string, since time.Time) (Scan, bool) {
 		}
 	}
 	return best, found
+}
+
+// TargetKey normalises a start URL for the cooldown (C-RL): lower-case scheme and host, path with a
+// trailing slash trimmed (empty path = "/"), query and fragment dropped. Several shops can share one
+// host, so the key includes the path.
+func TargetKey(u *url.URL) string {
+	p := strings.TrimSuffix(u.EscapedPath(), "/")
+	if p == "" {
+		p = "/"
+	}
+	return strings.ToLower(u.Scheme) + "://" + strings.ToLower(u.Host) + p
 }

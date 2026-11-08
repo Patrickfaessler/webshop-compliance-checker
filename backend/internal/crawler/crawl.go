@@ -89,7 +89,7 @@ func (c *Crawler) Crawl(ctx context.Context, startURL string, opt Options, robot
 		depth int
 	}
 	var hi, lo []item
-	seen := map[string]bool{startURL: true}
+	seen := map[string]bool{pageKey(startURL): true}
 	hi = append(hi, item{startURL, 0})
 
 	var res Result
@@ -133,14 +133,14 @@ func (c *Crawler) Crawl(ctx context.Context, startURL string, opt Options, robot
 		if it.depth < opt.MaxDepth {
 			for _, href := range r.Links {
 				n, ok := normalizeLink(r.FinalURL, href)
-				if !ok || seen[n] {
+				if !ok || seen[pageKey(n)] {
 					continue
 				}
 				nu, err := url.Parse(n)
 				if err != nil || !same(nu.Hostname()) {
 					continue
 				}
-				seen[n] = true
+				seen[pageKey(n)] = true
 				next := item{n, it.depth + 1}
 				if priority(n) == 0 {
 					hi = append(hi, next)
@@ -161,4 +161,24 @@ func (c *Crawler) Crawl(ctx context.Context, startURL string, opt Options, robot
 		return res, errors.New("crawler: no page could be loaded")
 	}
 	return res, nil
+}
+
+// pageKey identifies a page for the visited set: "/dir/" and "/dir/index.html" (or index.htm, index.php)
+// are the same page and must be crawled only once (C-1), otherwise findings would be counted twice.
+func pageKey(raw string) string {
+	u, err := url.Parse(raw)
+	if err != nil {
+		return raw
+	}
+	for _, idx := range []string{"index.html", "index.htm", "index.php"} {
+		if strings.HasSuffix(u.Path, "/"+idx) {
+			u.Path = strings.TrimSuffix(u.Path, idx)
+			break
+		}
+	}
+	if u.Path == "" {
+		u.Path = "/"
+	}
+	u.Fragment = ""
+	return u.String()
 }

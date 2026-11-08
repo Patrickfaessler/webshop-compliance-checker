@@ -247,3 +247,24 @@ func TestCrawlMaxPages(t *testing.T) {
 		t.Fatalf("pages = %d, want 2", len(res.Pages))
 	}
 }
+
+// Spec: C-1 — a directory and its index file are one page.
+func TestPageKey(t *testing.T) {
+	same := [][2]string{
+		{"https://s.at/teehaus/", "https://s.at/teehaus/index.html"},
+		{"https://s.at/", "https://s.at/index.php"},
+		{"https://s.at", "https://s.at/"},
+		{"https://s.at/a/", "https://s.at/a/index.htm#top"},
+	}
+	for _, p := range same {
+		if pageKey(p[0]) != pageKey(p[1]) {
+			t.Errorf("%s and %s must be the same page", p[0], p[1])
+		}
+	}
+	if pageKey("https://s.at/a/") == pageKey("https://s.at/b/index.html") {
+		t.Error("different directories must differ")
+	}
+	if pageKey("https://s.at/?p=1") == pageKey("https://s.at/?p=2") {
+		t.Error("different queries must differ")
+	}
+}

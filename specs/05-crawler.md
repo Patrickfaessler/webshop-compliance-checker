@@ -11,6 +11,7 @@ Read "Playwright" in this file as "headless Chromium via chromedp".
 | Max pages per scan | 50 |
 | Domain | exact host of the start URL plus its `www` variant; no other subdomains |
 | Link depth | 3 from start page |
+| Duplicates | a directory and its index file (`/x/`, `/x/index.html`, `index.htm`, `index.php`) are one page |
 | Page load timeout | 15 s load + wait for network idle (max 2 s) |
 | Total scan time | 5 min, then report is marked `incomplete` |
 | Parallel tabs per scan | 4 |
@@ -50,7 +51,7 @@ Banner not found → R3/R4 `not_assessable` unless trackers load in `no_interact
 
 ## Abuse limits without accounts (F12 / C-RL)
 
-- Per client IP: max 3 scans per hour, max 1 running scan.
-- Per target host: max 1 scan per 10 minutes (the cached result is returned instead).
+- Per client IP: max 3 scans per hour (configurable with `RATE_LIMIT_PER_HOUR` for local testing), max 1 running scan.
+- Per start address: a scan of the same start URL (scheme, host, path; query and fragment ignored) within 10 minutes returns the existing result instead of scanning again. Per URL, not per host, because several shops can share one host (hosting platforms, the test shops on GitHub Pages, T-3).
 - Global cap on running scans; excess scans are queued and show the queue position.
 - Optional proof-of-work or CAPTCHA token on `POST /scans` if abuse appears (decision deferred).

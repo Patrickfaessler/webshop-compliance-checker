@@ -15,6 +15,7 @@ a concrete fix per problem. No accounts. Algorithms first, Claude only as fallba
 | `backend/` | Go module `compliancechecker` (api, crawler, rules, scoring, worker) |
 | `frontend/` | Flutter web app |
 | `testcorpus/` | HTML cases with expected results per rule |
+| `testshops/` | three fictional multi-page test shops (generator + generated site), published on GitHub Pages |
 | `deploy/` | Docker Compose, `.env.example` |
 | `infos` | original project sketch (V1) |
 

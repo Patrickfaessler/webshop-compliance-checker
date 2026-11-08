@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex, nofollow">
+  <title>Körperseifen – Seifenmanufaktur Lavendel</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+<p class="testnote" role="note">Fiktiver Testshop für ein Software-Praktikum: keine echten Produkte, keine Bestellung möglich, alle Firmendaten sind erfunden.</p>
+<section id="cookie" class="cookie" aria-label="Cookie-Hinweis">
+  <p><strong>Cookies</strong></p>
+  <p>Wir verwenden technisch notwendige Cookies. Optionale Statistik-Cookies setzen wir nur mit Ihrer Zustimmung.</p>
+  <p class="cookie-buttons">
+    <button type="button" data-cookie="accept">Alle akzeptieren</button>
+    <button type="button" data-cookie="reject">Nur notwendige</button>
+    <button type="button" data-cookie="settings" class="secondary">Einstellungen</button>
+  </p>
+</section>
+<header class="site">
+  <a class="brand" href="index.html">Seifenmanufaktur Lavendel</a>
+  <p class="tagline">Handgemachte Seifen aus dem Salzkammergut</p>
+  <nav aria-label="Hauptnavigation">
+    <a href="index.html">Start</a>
+    <a href="kategorie-1.html">Körperseifen</a>
+    <a href="kategorie-2.html">Haarseifen</a>
+    <a href="warenkorb.html">Warenkorb</a>
+  </nav>
+  <form class="search" role="search" action="#" onsubmit="return false">
+    <label for="q" class="sr-only">Suche im Shop</label>
+    <input id="q" type="search" name="q">
+    <button type="submit">Suchen</button>
+  </form>
+</header>
+<main>
+<h1>Körperseifen</h1>
+<p>Alle Produkte der Kategorie Körperseifen.</p>
+<h2>Unsere Auswahl</h2>
+<div class="grid">
+  <article class="card">
+    <img src="img/lavendel.svg" alt="Lavendelseife, Produktfoto" width="160" height="120">
+    <h4><a href="produkt-lavendel.html">Lavendelseife</a></h4>
+    <p>Mit Öl aus eigenem Anbau.</p>
+    <p class="price">5,90 €</p>
+    <p class="hint">inkl. 20 % USt., zzgl. Versand</p>
+  </article>
+  <article class="card">
+    <img src="img/honig.svg" alt="Honig-Hafer-Seife, Produktfoto" width="160" height="120">
+    <h4><a href="produkt-honig.html">Honig-Hafer-Seife</a></h4>
+    <p>Mild, für empfindliche Haut.</p>
+    <p class="price">6,20 €</p>
+    <p class="hint">inkl. 20 % USt., zzgl. Versand</p>
+  </article>
+</div>
+</main>
+<footer class="site">
+  <form class="newsletter" action="#" onsubmit="return false">
+    <label for="nl">E-Mail für den Newsletter</label>
+    <input id="nl" type="email" name="nl">
+    <button type="submit">Anmelden</button>
+  </form>
+  <nav aria-label="Rechtliches">
+    <a href="impressum.html">Impressum</a>
+    <a href="datenschutz.html">Datenschutz</a>
+    <a href="agb.html">AGB</a>
+    <a href="widerruf.html">Widerrufsbelehrung</a>
+  </nav>
+  <p>© 2026 Seifenmanufaktur Lavendel OG (fiktiv)</p>
+</footer>
+<script>
+  document.querySelectorAll('[data-cookie]').forEach(function (b) {
+    b.addEventListener('click', function () { document.getElementById('cookie').hidden = true; });
+  });
+</script>
+</body>
+</html>

@@ -1,0 +1,55 @@
+{
+  "shop": "Seifenmanufaktur Lavendel",
+  "startPath": "seifen/",
+  "kind": "mixed",
+  "expected": {
+    "A1": "failed",
+    "A2": "failed",
+    "A3": "passed",
+    "A4": "failed",
+    "A6": "passed"
+  },
+  "expectedScore": 40,
+  "pages": [
+    "index.html",
+    "kategorie-1.html",
+    "kategorie-2.html",
+    "produkt-lavendel.html",
+    "produkt-honig.html",
+    "produkt-zirbe.html",
+    "warenkorb.html",
+    "kasse.html",
+    "impressum.html",
+    "datenschutz.html",
+    "agb.html",
+    "widerruf.html"
+  ],
+  "planted": [
+    {
+      "page": "agb.html",
+      "rule": "A1",
+      "what": "Stand-Hinweis in #9a9a9a auf Weiß (2,8:1)"
+    },
+    {
+      "page": "produkt-lavendel.html",
+      "rule": "A2",
+      "what": "Alternativtext ist ein Dateiname"
+    },
+    {
+      "page": "kategorie-*.html",
+      "rule": "A4",
+      "what": "h2 direkt gefolgt von h4"
+    },
+    {
+      "page": "kasse.html",
+      "rule": "R6",
+      "what": "Bestellbutton heißt \"Jetzt kaufen\" statt „zahlungspflichtig bestellen“"
+    },
+    {
+      "page": "—",
+      "rule": "R7",
+      "what": "keine Funktion „Vertrag widerrufen“"
+    }
+  ],
+  "note": "expected/expectedScore cover the implemented rules (A1-A4, A6). R-rule defects are planted and listed for later; the scanner does not check them yet."
+}

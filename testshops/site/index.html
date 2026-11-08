@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex, nofollow">
+  <title>Testshops – Webshop-Check</title>
+  <style>
+    body { font-family: system-ui, sans-serif; color: #1a1a1a; max-width: 860px; margin: 32px auto; padding: 0 16px; line-height: 1.5; }
+    table { border-collapse: collapse; width: 100%; }
+    th, td { border: 1px solid #c8c8c8; padding: 6px 10px; text-align: left; vertical-align: top; }
+    a { color: #0b4a7a; }
+  </style>
+</head>
+<body>
+<h1>Testshops für den Webshop-Check</h1>
+<p>Drei <strong>fiktive</strong> Webshops mit absichtlich eingebauten Fehlern, zum Testen des Webshop-Checks (Software-Praktikum WS 2026/27, Gruppe 9). Es gibt keine echten Produkte, nichts kann bestellt werden, alle Firmendaten sind erfunden.</p>
+<p>Zum Testen die Adresse eines Shops kopieren und im Webshop-Check prüfen lassen. Die erwarteten Ergebnisse stehen in der Tabelle und in der Datei <code>expected.json</code> jedes Shops.</p>
+<table>
+  <thead><tr><th scope="col">Shop</th><th scope="col">Art</th><th scope="col">Erwartet (A1, A2, A3, A4, A6)</th><th scope="col">Erwarteter Score</th></tr></thead>
+  <tbody>
+    <tr><td><a href="teehaus/">Teehaus Bergkristall</a></td><td>vorbildlich, keine eingebauten Barrierefreiheitsfehler</td><td>A1: bestanden, A2: bestanden, A3: bestanden, A4: bestanden, A6: bestanden</td><td>100 %</td></tr>
+    <tr><td><a href="radwerk/">Radwerk Alpin</a></td><td>viele Fehler auf vielen Seiten</td><td>A1: nicht bestanden, A2: nicht bestanden, A3: nicht bestanden, A4: nicht bestanden, A6: nicht bestanden</td><td>0 %</td></tr>
+    <tr><td><a href="seifen/">Seifenmanufaktur Lavendel</a></td><td>gemischt, einzelne versteckte Fehler</td><td>A1: nicht bestanden, A2: nicht bestanden, A3: bestanden, A4: nicht bestanden, A6: bestanden</td><td>40 %</td></tr>
+  </tbody>
+</table>
+<p>Quelltext und Erklärung: <code>testshops/</code> im Projekt-Repository.</p>
+</body>
+</html>
