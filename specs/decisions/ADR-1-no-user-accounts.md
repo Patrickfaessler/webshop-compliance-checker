@@ -8,7 +8,7 @@ Status: accepted (2026-11-05)
 
 **Consequences.**
 - Abuse protection relies on rate limits per IP and per target host (`05-crawler.md`).
-- Results expire after 30 days (F11, N4).
+- Results expire after 30 days (F11, N4). **Changed by ADR-6:** results are not stored and live 1 hour in memory.
 - "Mark as done" (F9) lives in the browser (local storage); the server stores nothing per person.
-- Re-scan comparison works through `previousScanId` from the result page.
+- Re-scan comparison works through `previousScanId` from the result page (postponed by ADR-6).
 - Dropped: scheduled scans, e-mail notifications, agency multi-shop dashboards. Would need a new ADR.

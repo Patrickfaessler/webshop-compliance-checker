@@ -14,7 +14,7 @@ func New() Rule { return Rule{} }
 
 func (Rule) Meta() rules.Meta {
 	return rules.Meta{
-		ID: "A1", Name: "Text contrast", Area: "accessibility", Severity: rules.Warning,
+		ID: "A1", Name: "Text contrast", NameDe: "Textkontrast", Area: "accessibility", Severity: rules.Warning,
 		SummaryDe: "Text und Hintergrund haben zu wenig Kontrast.",
 	}
 }

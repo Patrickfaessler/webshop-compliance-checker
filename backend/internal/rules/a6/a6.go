@@ -27,6 +27,7 @@ func (Rule) Meta() rules.Meta {
 	return rules.Meta{
 		ID:         "A6",
 		Name:       "Page language declared",
+		NameDe:     "Seitensprache angegeben",
 		Area:       "accessibility",
 		Severity:   rules.Notice,
 		AIFallback: false,

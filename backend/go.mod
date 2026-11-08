@@ -5,6 +5,7 @@ go 1.26.0
 require (
 	github.com/chromedp/cdproto v0.159.0
 	github.com/chromedp/chromedp v0.22.1
+	github.com/go-pdf/fpdf v0.9.0
 	github.com/jackc/pgx/v5 v5.12.0
 	golang.org/x/net v0.62.0
 )

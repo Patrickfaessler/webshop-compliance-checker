@@ -120,6 +120,9 @@ abstract class ApiClient {
   Future<ScanStatus> createScan(String url, List<String> areas);
   Future<ScanStatus> getScan(String id);
   Future<ScanFindings> getFindings(String id);
+
+  /// Download URL of the finished report; [ext] is `pdf` or `json` (F10, F13).
+  Uri reportUri(String id, String ext);
 }
 
 const _apiBase =
@@ -147,6 +150,10 @@ class HttpApiClient implements ApiClient {
   Future<ScanStatus> getScan(String id) async =>
       ScanStatus.fromJson(await _send(() =>
           _http.get(Uri.parse('$_base/api/scans/${Uri.encodeComponent(id)}'))));
+
+  @override
+  Uri reportUri(String id, String ext) =>
+      Uri.parse('$_base/api/scans/${Uri.encodeComponent(id)}/report.$ext');
 
   @override
   Future<ScanFindings> getFindings(String id) async =>

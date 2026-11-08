@@ -1,6 +1,6 @@
 # ADR-5 Local PostgreSQL by default, Supabase optional
 
-Status: accepted (2026-11-08, revised the same day: local first)
+Status: accepted (2026-11-08, revised the same day: local first). **Currently switched off by ADR-6:** scans are not stored; the store below is used only with `STORE=postgres`.
 
 **Decision.** Development uses a **local PostgreSQL 17** on each machine (native Windows install on `localhost:5432`,
 or the Docker `localdb` profile where virtualisation works). A **Supabase**-hosted PostgreSQL (EU region) is a

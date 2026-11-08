@@ -27,7 +27,7 @@ func New() Rule { return Rule{} }
 
 func (Rule) Meta() rules.Meta {
 	return rules.Meta{
-		ID: "A2", Name: "Alternative text for images", Area: "accessibility", Severity: rules.Warning,
+		ID: "A2", Name: "Alternative text for images", NameDe: "Alternativtexte für Bilder", Area: "accessibility", Severity: rules.Warning,
 		SummaryDe: "Ein Bild hat keinen brauchbaren Alternativtext.",
 	}
 }

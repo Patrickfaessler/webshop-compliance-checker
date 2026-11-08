@@ -14,6 +14,8 @@ import (
 	"time"
 
 	"compliancechecker/internal/ratelimit"
+	"compliancechecker/internal/report"
+	"compliancechecker/internal/rules"
 	"compliancechecker/internal/scan"
 	"compliancechecker/internal/ssrf"
 	"compliancechecker/internal/worker"
@@ -30,6 +32,8 @@ type Server struct {
 	HostCooldown time.Duration
 	// AllowOrigin enables CORS for the Flutter web dev server (e.g. http://localhost:5000). Empty = off.
 	AllowOrigin string
+	// RuleMeta gives German names and severities for the downloadable report (F10, F13).
+	RuleMeta map[string]rules.Meta
 }
 
 func (s *Server) now() time.Time {
@@ -49,6 +53,8 @@ func (s *Server) Handler() http.Handler {
 	mux.HandleFunc("POST /api/scans", s.createScan)
 	mux.HandleFunc("GET /api/scans/{id}", s.getScan)
 	mux.HandleFunc("GET /api/scans/{id}/findings", s.getFindings)
+	mux.HandleFunc("GET /api/scans/{id}/report.json", s.reportJSON)
+	mux.HandleFunc("GET /api/scans/{id}/report.pdf", s.reportPDF)
 	return s.cors(mux)
 }
 
@@ -182,7 +188,7 @@ func (s *Server) createScan(w http.ResponseWriter, r *http.Request) {
 func (s *Server) getScan(w http.ResponseWriter, r *http.Request) {
 	sc, ok := s.Store.Get(r.PathValue("id"))
 	if !ok {
-		problem(w, http.StatusNotFound, "Diese Prüfung gibt es nicht (mehr).", 0)
+		problem(w, http.StatusNotFound, notFoundDe, 0)
 		return
 	}
 	writeJSON(w, http.StatusOK, toStatus(sc))
@@ -191,7 +197,7 @@ func (s *Server) getScan(w http.ResponseWriter, r *http.Request) {
 func (s *Server) getFindings(w http.ResponseWriter, r *http.Request) {
 	sc, ok := s.Store.Get(r.PathValue("id"))
 	if !ok {
-		problem(w, http.StatusNotFound, "Diese Prüfung gibt es nicht (mehr).", 0)
+		problem(w, http.StatusNotFound, notFoundDe, 0)
 		return
 	}
 	sev, rule := r.URL.Query().Get("severity"), r.URL.Query().Get("rule")
@@ -264,4 +270,62 @@ func problem(w http.ResponseWriter, code int, titleDe string, retryAfter int) {
 	w.Header().Set("Content-Type", "application/problem+json; charset=utf-8")
 	w.WriteHeader(code)
 	_ = json.NewEncoder(w).Encode(body)
+}
+
+// notFoundDe explains why a link stops working: results are kept for one hour only (ADR-6).
+const notFoundDe = "Diese Prüfung gibt es nicht (mehr). Ergebnisse werden nicht gespeichert und nach einer Stunde gelöscht."
+
+// finishedReport loads a scan and builds its report, or writes the error response.
+func (s *Server) finishedReport(w http.ResponseWriter, r *http.Request) (report.Report, bool) {
+	sc, ok := s.Store.Get(r.PathValue("id"))
+	if !ok {
+		problem(w, http.StatusNotFound, notFoundDe, 0)
+		return report.Report{}, false
+	}
+	rep, err := report.Build(sc, s.RuleMeta, s.now())
+	if errors.Is(err, report.ErrNotFinished) {
+		problem(w, http.StatusConflict, "Der Bericht ist erst verfügbar, wenn die Prüfung abgeschlossen ist.", 0)
+		return report.Report{}, false
+	}
+	if err != nil {
+		problem(w, http.StatusInternalServerError, "Der Bericht konnte nicht erstellt werden.", 0)
+		return report.Report{}, false
+	}
+	return rep, true
+}
+
+func download(w http.ResponseWriter, contentType, fileName string, body []byte) {
+	w.Header().Set("Content-Type", contentType)
+	w.Header().Set("Content-Disposition", `attachment; filename="`+fileName+`"`)
+	w.Header().Set("Cache-Control", "no-store")
+	w.Header().Set("X-Content-Type-Options", "nosniff")
+	_, _ = w.Write(body)
+}
+
+// reportJSON serves the report as JSON (F13).
+func (s *Server) reportJSON(w http.ResponseWriter, r *http.Request) {
+	rep, ok := s.finishedReport(w, r)
+	if !ok {
+		return
+	}
+	b, err := rep.JSON()
+	if err != nil {
+		problem(w, http.StatusInternalServerError, "Der Bericht konnte nicht erstellt werden.", 0)
+		return
+	}
+	download(w, "application/json; charset=utf-8", rep.FileName("json"), b)
+}
+
+// reportPDF serves the report as PDF (F10).
+func (s *Server) reportPDF(w http.ResponseWriter, r *http.Request) {
+	rep, ok := s.finishedReport(w, r)
+	if !ok {
+		return
+	}
+	b, err := rep.PDF(report.PDFOptions{})
+	if err != nil {
+		problem(w, http.StatusInternalServerError, "Der Bericht konnte nicht erstellt werden.", 0)
+		return
+	}
+	download(w, "application/pdf", rep.FileName("pdf"), b)
 }

@@ -14,8 +14,8 @@ import (
 // DisclaimerDe must appear on report, detail view and PDF (N3, specs/01-legal-scope.md).
 const DisclaimerDe = "Automatische Prüfungen erfassen nur einen Teil möglicher Probleme und ersetzen keine Rechtsberatung. Geprüft wurde auf EU-Ebene; nationale Zusatzpflichten sind nicht enthalten."
 
-// Retention is how long a scan stays readable (F11, N4).
-const Retention = 30 * 24 * time.Hour
+// Retention is how long a scan stays readable after it was created (F11, N4, ADR-6: in memory only).
+const Retention = time.Hour
 
 type Status string
 
@@ -125,6 +125,20 @@ func (m *MemoryStore) Update(id string, fn func(*Scan)) bool {
 	fn(&s)
 	m.scans[id] = s
 	return true
+}
+
+// Purge removes expired scans from memory and returns how many were removed (N4, ADR-6).
+func (m *MemoryStore) Purge() int {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	now, n := m.Now(), 0
+	for id, s := range m.scans {
+		if !s.ExpiresAt.IsZero() && !now.Before(s.ExpiresAt) {
+			delete(m.scans, id)
+			n++
+		}
+	}
+	return n
 }
 
 func (m *MemoryStore) LatestForHost(host string, since time.Time) (Scan, bool) {
