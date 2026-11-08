@@ -29,6 +29,7 @@ Webshop compliance checker (working title). Flutter web frontend + Go backend (b
 ## Status
 
 - Installed: Go 1.27, Git, GitHub CLI (logged in as Patrickfaessler), Flutter 3.47.9 (`C:\src\flutter`, on the user PATH since 2026-11-08; old shells still need the PATH line below).
+  Also installed 2026-11-08: Google Chrome, Docker Desktop. WSL 2 NOT yet (needs an admin shell: `wsl --install --no-distribution`, then reboot); Docker only works after that.
   Repo: https://github.com/Patrickfaessler/webshop-compliance-checker (public, MIT; axe-core MPL-2.0, see THIRD_PARTY_NOTICES.md). Line endings LF via `.gitattributes`.
 - Backend verified: `go vet`, `go test ./...` green. Done: scoring (S-1), rule A6 (verified against the corpus), SSRF address filter (`backend/internal/ssrf`).
   `backend/internal/corpus` runs `testcorpus/cases`; register each new rule in `allRules()` there.
@@ -44,4 +45,4 @@ Webshop compliance checker (working title). Flutter web frontend + Go backend (b
   API base via `--dart-define=API_BASE=http://localhost:8080`. Not yet viewed in a real browser. Missing: finding detail, suggestions, PDF, re-scan.
   To try it: backend `$env:CORS_ORIGIN='http://localhost:5000'; go run ./cmd/api`, frontend `flutter run -d chrome --web-port 5000`.
 - In a fresh PowerShell, set PATH first: `$env:Path = 'C:\src\flutter\bin;' + [Environment]::GetEnvironmentVariable('Path','Machine') + ';' + [Environment]::GetEnvironmentVariable('Path','User')`.
-- Next: A5 (keyboard, CDP key events); fix templates and `GET /findings/{id}` detail view; legal rules R1–R7 with the lexicon/Claude fallback; egress proxy; PostgreSQL store/queue once Docker is installed (not installed yet).
+- Next: A5 (keyboard, CDP key events); fix templates and `GET /findings/{id}` detail view; legal rules R1–R7 with the lexicon/Claude fallback; egress proxy; PostgreSQL store/queue once WSL 2 is set up for Docker.
