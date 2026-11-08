@@ -12,8 +12,10 @@ import (
 	"time"
 
 	"compliancechecker/internal/api"
+	"compliancechecker/internal/config"
 	"compliancechecker/internal/crawler"
 	"compliancechecker/internal/fetch"
+	"compliancechecker/internal/pgstore"
 	"compliancechecker/internal/ratelimit"
 	"compliancechecker/internal/rules"
 	"compliancechecker/internal/rules/a1"
@@ -36,12 +38,34 @@ func main() {
 		log.Fatal(err)
 	}
 
-	store := scan.NewMemoryStore()
-	limiter := ratelimit.New(3, time.Hour, 1)
-	jobs := make(chan worker.Job, 32)
-
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt)
 	defer stop()
+
+	// Settings from the environment, optionally filled from deploy/.env (ADR-5). Real env vars win.
+	if used, err := config.LoadDotEnv(config.DefaultDotEnvPaths...); err != nil {
+		log.Fatalf("reading %s: %v", used, err)
+	} else if used != "" {
+		log.Printf("settings loaded from %s", used)
+	}
+
+	var store scan.Store
+	if dbURL := os.Getenv("DATABASE_URL"); dbURL != "" {
+		openCtx, cancel := context.WithTimeout(ctx, 20*time.Second)
+		pg, err := pgstore.Open(openCtx, dbURL)
+		cancel()
+		if err != nil {
+			log.Fatalf("database: %v", err)
+		}
+		defer pg.Close()
+		store = pg
+		log.Printf("database: PostgreSQL (migrations applied)")
+		go purgeLoop(ctx, pg)
+	} else {
+		store = scan.NewMemoryStore()
+		log.Printf("database: none (DATABASE_URL not set), scans are kept in memory and lost on restart")
+	}
+	limiter := ratelimit.New(3, time.Hour, 1)
+	jobs := make(chan worker.Job, 32)
 
 	fetcher := fetch.New(nil)
 	var source worker.PageSource
@@ -85,5 +109,23 @@ func main() {
 	log.Printf("api listening on %s", addr)
 	if err := httpSrv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
 		log.Fatal(err)
+	}
+}
+
+// purgeLoop deletes expired scans every hour (N4: 30-day retention).
+func purgeLoop(ctx context.Context, pg *pgstore.Store) {
+	t := time.NewTicker(time.Hour)
+	defer t.Stop()
+	for {
+		if n, err := pg.Purge(ctx); err != nil {
+			log.Printf("purge: %v", err)
+		} else if n > 0 {
+			log.Printf("purge: removed %d expired scans", n)
+		}
+		select {
+		case <-ctx.Done():
+			return
+		case <-t.C:
+		}
 	}
 }

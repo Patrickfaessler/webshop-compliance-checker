@@ -27,7 +27,8 @@ winget install GoLang.Go
 winget install Git.Git
 winget install GitHub.cli
 winget install Google.Chrome           # Flutter web dev; Edge also works for the backend crawler
-winget install Microsoft.WSL           # only for Docker (test shop, optional local DB); admin shell, reboot afterwards
+winget install PostgreSQL.PostgreSQL.17 # local database, see "Database" below
+winget install Microsoft.WSL           # only for Docker (WooCommerce test shop); needs virtualisation, reboot afterwards
 winget install Docker.DockerDesktop    # optional until the WooCommerce test shop (M1)
 git clone --depth 1 -b stable https://github.com/flutter/flutter.git C:\src\flutter
 # then add C:\src\flutter\bin to your user PATH and open a new terminal
@@ -54,10 +55,23 @@ cd backend; $env:CORS_ORIGIN = 'http://localhost:5000'; go run ./cmd/api
 cd frontend; flutter run -d chrome --web-port 5000
 ```
 
-Database (from milestone M1): a shared **Supabase** project (EU region), used only as PostgreSQL by the Go backend (ADR-5).
-Copy `deploy/.env.example` to `deploy/.env` and paste the **session pooler** connection string as `DATABASE_URL`.
-Never commit `deploy/.env` and never put the database string or Supabase keys into the Flutter app.
-Offline alternative: `docker compose -f deploy/docker-compose.yml --profile localdb up -d`.
+## Database
+
+Default is a **local PostgreSQL 17** on your own machine (ADR-5). Without `DATABASE_URL` the backend keeps scans in memory.
+
+```powershell
+winget install PostgreSQL.PostgreSQL.17      # admin prompt; remember the superuser password
+# create the app role and databases (psql asks for the superuser password)
+$psql = "C:\Program Files\PostgreSQL\17\bin\psql.exe"
+& $psql -U postgres -h localhost -c "CREATE ROLE checker LOGIN PASSWORD '<choose one>'"
+& $psql -U postgres -h localhost -c "CREATE DATABASE checker OWNER checker"
+& $psql -U postgres -h localhost -c "CREATE DATABASE checker_test OWNER checker"
+```
+
+Then copy `deploy/.env.example` to `deploy/.env` and fill in `DATABASE_URL` and `TEST_DATABASE_URL`. Never commit `deploy/.env`.
+
+Alternatives: Docker (`docker compose -f deploy/docker-compose.yml --profile localdb up -d`, needs virtualisation) or a shared
+Supabase project (session pooler string as `DATABASE_URL`). Only the Go backend ever connects; never put a database string into the Flutter app.
 
 ## Working method
 
@@ -66,3 +80,11 @@ Spec first, test second, code third (`specs/README.md`). Every test cites its sp
 ## License
 
 Our own code is MIT-licensed (`LICENSE`). Embedded third-party code keeps its own license, see `THIRD_PARTY_NOTICES.md` (axe-core is MPL-2.0).
+
+## Troubleshooting
+
+- **`An Application Control policy has blocked this file`** when running `go test`: Windows Smart App Control blocked a freshly
+  built test binary in `%TEMP%`. It is not a code error. Build elsewhere:
+  `New-Item -ItemType Directory -Force "$env:LOCALAPPDATA\gotest-tmp"; $env:GOTMPDIR = "$env:LOCALAPPDATA\gotest-tmp"; go test ./...`
+- **API says `database: none`**: `DATABASE_URL` is not set; check `deploy/.env`. The API then keeps scans only in memory.
+- **`password authentication failed for user "checker"`**: the role or password in `deploy/.env` does not match; see "Database".
