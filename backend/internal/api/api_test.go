@@ -309,3 +309,31 @@ func TestReportNotReady(t *testing.T) {
 		}
 	}
 }
+
+// Spec: C-RL-PROXY — X-Forwarded-For counts only from a trusted proxy, and only its last entry.
+func TestClientKeyBehindProxy(t *testing.T) {
+	e := newEnv(3, 3)
+	e.srv.TrustedProxies = []netip.Prefix{netip.MustParsePrefix("172.31.250.0/24")}
+	key := func(remote, xff string) string {
+		req := httptest.NewRequest("GET", "/", nil)
+		req.RemoteAddr = remote
+		if xff != "" {
+			req.Header.Set("X-Forwarded-For", xff)
+		}
+		return e.srv.clientKey(req)
+	}
+	a := key("172.31.250.2:5000", "198.51.100.1")
+	b := key("172.31.250.2:5000", "198.51.100.2")
+	if a == b {
+		t.Fatal("two clients behind the proxy must get different keys")
+	}
+	if key("172.31.250.2:5000", "203.0.113.9, 198.51.100.1") != a {
+		t.Fatal("a spoofed earlier X-Forwarded-For entry must not change the key")
+	}
+	if key("203.0.113.5:1", "198.51.100.1") != key("203.0.113.5:1", "198.51.100.2") {
+		t.Fatal("X-Forwarded-For from an untrusted address must be ignored")
+	}
+	if key("172.31.250.2:5000", "") != key("172.31.250.2:6000", "") {
+		t.Fatal("without the header the proxy address is the key")
+	}
+}

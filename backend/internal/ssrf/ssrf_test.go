@@ -123,3 +123,27 @@ func TestValidateRedirectTarget(t *testing.T) {
 		t.Fatal("redirect to metadata address must be rejected")
 	}
 }
+
+// Spec: C-SSRF-DEV — the local-testing policy allows loopback on any port, nothing else.
+func TestPolicyAllowLoopback(t *testing.T) {
+	lookup := fakeLookup(map[string][]string{
+		"localhost":  {"127.0.0.1", "::1"},
+		"mixed.test": {"127.0.0.1", "10.0.0.1"},
+		"lan.test":   {"192.168.1.10"},
+	})
+	dev := Policy{AllowLoopback: true}
+	for _, u := range []string{"http://127.0.0.1:5500/teehaus/", "http://localhost:5500/", "http://[::1]:8080/"} {
+		if _, _, err := dev.Validate(context.Background(), u, lookup); err != nil {
+			t.Errorf("%s should be allowed in dev mode: %v", u, err)
+		}
+		if _, _, err := Validate(context.Background(), u, lookup); !errors.Is(err, ErrBlocked) {
+			t.Errorf("%s must stay blocked by default", u)
+		}
+	}
+	for _, u := range []string{"http://mixed.test/", "http://lan.test/", "http://10.0.0.1/", "http://169.254.169.254/",
+		"file:///etc/passwd", "http://user:pw@127.0.0.1/"} {
+		if _, _, err := dev.Validate(context.Background(), u, lookup); !errors.Is(err, ErrBlocked) {
+			t.Errorf("%s must stay blocked in dev mode", u)
+		}
+	}
+}

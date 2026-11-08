@@ -23,6 +23,23 @@ Published with GitHub Pages from the `gh-pages` branch:
 
 Paste one of the shop addresses into the Webshop-Check and compare the report with the table above.
 
+## Local
+
+Serve the shops and scan them through the local app (the switch `ALLOW_LOOPBACK_TARGETS=1` lets the scanner
+reach `127.0.0.1`; it only works while the API listens on loopback, spec C-SSRF-DEV):
+
+```powershell
+cd testshops/serve; go run .            # shops on http://127.0.0.1:5500/
+# second shell:
+cd backend
+$env:API_ADDR='127.0.0.1:8080'; $env:CORS_ORIGIN='http://localhost:5000'
+$env:RATE_LIMIT_PER_HOUR='100'; $env:ALLOW_LOOPBACK_TARGETS='1'
+go run ./cmd/api
+# third shell: cd frontend; flutter run -d chrome --web-port 5000
+```
+
+Then scan `http://127.0.0.1:5500/teehaus/`, `.../radwerk/` or `.../seifen/` (type the `http://`).
+
 ## Change a shop
 
 The HTML is generated; do not edit `site/` by hand.

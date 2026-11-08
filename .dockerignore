@@ -1,0 +1,8 @@
+# Build context is the repository root (deploy/docker-compose.server.yml). Never send secrets or local builds.
+.git
+**/.env
+deploy/.env
+backend/bin
+frontend/build
+frontend/.dart_tool
+screenshots

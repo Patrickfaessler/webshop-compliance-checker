@@ -16,6 +16,13 @@ http.Response json(Object body, [int code = 200]) =>
 
 // Spec: specs/08-api.yaml
 void main() {
+  // Spec: DEP-2 — an empty API_BASE uses the page's own origin.
+  test('empty API_BASE means same origin', () {
+    final page = Uri.parse('https://check.example.org/r/abc?x=1');
+    expect(resolveApiBase('', page), 'https://check.example.org');
+    expect(resolveApiBase('http://localhost:8080', page), 'http://localhost:8080');
+  });
+
   test('createScan posts url and areas and parses the status', () async {
     late http.Request seen;
     final api = clientFor((r) {

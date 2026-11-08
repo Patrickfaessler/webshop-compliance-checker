@@ -8,6 +8,7 @@ import (
 	"errors"
 	"net"
 	"net/http"
+	"net/netip"
 	"slices"
 	"strconv"
 	"strings"
@@ -26,6 +27,7 @@ type Server struct {
 	Limiter *ratelimit.Limiter
 	Jobs    chan<- worker.Job
 	Lookup  ssrf.LookupFunc // nil = system resolver
+	SSRF    ssrf.Policy     // zero = strict; AllowLoopback only for local testing (C-SSRF-DEV)
 	Salt    []byte          // rotating salt for hashing client IPs (N4)
 	Now     func() time.Time
 	// TargetCooldown: a scan of the same start address (scan.TargetKey) within this time returns the existing result (C-RL).
@@ -34,6 +36,8 @@ type Server struct {
 	AllowOrigin string
 	// RuleMeta gives German names and severities for the downloadable report (F10, F13).
 	RuleMeta map[string]rules.Meta
+	// TrustedProxies are reverse-proxy addresses whose X-Forwarded-For is believed (C-RL-PROXY). Empty = none.
+	TrustedProxies []netip.Prefix
 }
 
 func (s *Server) now() time.Time {
@@ -128,7 +132,7 @@ func (s *Server) createScan(w http.ResponseWriter, r *http.Request) {
 		problem(w, http.StatusBadRequest, "Unbekannter Prüfbereich. Erlaubt: accessibility, legal.", 0)
 		return
 	}
-	u, _, err := ssrf.Validate(r.Context(), req.URL, s.Lookup)
+	u, _, err := s.SSRF.Validate(r.Context(), req.URL, s.Lookup)
 	if err != nil {
 		msg := "Diese Adresse konnte nicht geprüft werden. Bitte eine öffentliche http- oder https-Adresse eingeben."
 		if !errors.Is(err, ssrf.ErrBlocked) {
@@ -247,11 +251,17 @@ func normalizeAreas(in []string) ([]string, bool) {
 }
 
 // clientKey hashes the client IP with the rotating salt. The IP itself is never stored (N4).
-// X-Forwarded-For is deliberately ignored; a trusted reverse proxy setting is a later decision.
+// Behind a trusted proxy the last X-Forwarded-For entry is the client (C-RL-PROXY); otherwise the header is ignored.
 func (s *Server) clientKey(r *http.Request) string {
 	ip, _, err := net.SplitHostPort(r.RemoteAddr)
 	if err != nil {
 		ip = r.RemoteAddr
+	}
+	if xff := r.Header.Values("X-Forwarded-For"); len(xff) > 0 && s.trustedProxy(ip) {
+		parts := strings.Split(xff[len(xff)-1], ",")
+		if last, err := netip.ParseAddr(strings.TrimSpace(parts[len(parts)-1])); err == nil {
+			ip = last.Unmap().String()
+		}
 	}
 	sum := sha256.Sum256(append(append([]byte{}, s.Salt...), ip...))
 	return hex.EncodeToString(sum[:8])
@@ -330,4 +340,17 @@ func (s *Server) reportPDF(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	download(w, "application/pdf", rep.FileName("pdf"), b)
+}
+
+func (s *Server) trustedProxy(ip string) bool {
+	a, err := netip.ParseAddr(ip)
+	if err != nil {
+		return false
+	}
+	for _, p := range s.TrustedProxies {
+		if p.Contains(a.Unmap()) {
+			return true
+		}
+	}
+	return false
 }

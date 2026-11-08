@@ -6,10 +6,13 @@ import (
 	"context"
 	"crypto/rand"
 	"log"
+	"net"
 	"net/http"
+	"net/netip"
 	"os"
 	"os/signal"
 	"strconv"
+	"strings"
 	"time"
 
 	"compliancechecker/internal/api"
@@ -25,6 +28,7 @@ import (
 	"compliancechecker/internal/rules/a4"
 	"compliancechecker/internal/rules/a6"
 	"compliancechecker/internal/scan"
+	"compliancechecker/internal/ssrf"
 	"compliancechecker/internal/worker"
 )
 
@@ -89,12 +93,27 @@ func main() {
 	log.Printf("rate limit: %d scans per hour per client, 1 at a time", perHour)
 	jobs := make(chan worker.Job, 32)
 
+	// C-SSRF-DEV: allow scanning loopback targets (local test shops), only while the API itself is local.
+	var policy ssrf.Policy
+	if os.Getenv("ALLOW_LOOPBACK_TARGETS") == "1" {
+		host, _, err := net.SplitHostPort(addr)
+		if ip, perr := netip.ParseAddr(host); err != nil || (host != "localhost" && (perr != nil || !ip.IsLoopback())) {
+			log.Fatalf("ALLOW_LOOPBACK_TARGETS=1 needs API_ADDR on a loopback address (e.g. 127.0.0.1:8080), got %q", addr)
+		}
+		policy.AllowLoopback = true
+		log.Printf("WARNING: ALLOW_LOOPBACK_TARGETS=1: scans of 127.0.0.1/localhost are allowed (local testing only)")
+	}
+
 	fetcher := fetch.New(nil)
+	fetcher.Policy = policy
 	var source worker.PageSource
 	if path, err := crawler.FindBrowser(""); err == nil {
 		log.Printf("browser crawler enabled (%s)", path)
 		source = worker.CrawlSource{
-			Crawler: &crawler.Crawler{ExecPath: path, NoSandbox: os.Getenv("CHROME_NO_SANDBOX") == "1"},
+			Crawler: &crawler.Crawler{
+				ExecPath: path, NoSandbox: os.Getenv("CHROME_NO_SANDBOX") == "1",
+				Validate: func(ctx context.Context, raw string) error { _, _, err := policy.Validate(ctx, raw, nil); return err },
+			},
 			Options: crawler.DefaultOptions(),
 			Robots:  fetcher,
 		}
@@ -121,10 +140,11 @@ func main() {
 	}
 
 	srv := &api.Server{
-		Store: store, Limiter: limiter, Jobs: jobs, Salt: salt,
+		Store: store, Limiter: limiter, Jobs: jobs, Salt: salt, SSRF: policy,
 		TargetCooldown: 10 * time.Minute, // C-RL
 		AllowOrigin:    os.Getenv("CORS_ORIGIN"),
 		RuleMeta:       ruleMeta,
+		TrustedProxies: trustedProxies(os.Getenv("TRUSTED_PROXIES")),
 	}
 	httpSrv := &http.Server{Addr: addr, Handler: srv.Handler(), ReadHeaderTimeout: 10 * time.Second}
 
@@ -157,4 +177,27 @@ func purgeLoop(ctx context.Context, purge func() (int, error)) {
 		case <-t.C:
 		}
 	}
+}
+
+// trustedProxies parses TRUSTED_PROXIES, a comma-separated list of CIDRs or single addresses (C-RL-PROXY).
+func trustedProxies(v string) []netip.Prefix {
+	var out []netip.Prefix
+	for _, s := range strings.Split(v, ",") {
+		if s = strings.TrimSpace(s); s == "" {
+			continue
+		}
+		p, err := netip.ParsePrefix(s)
+		if err != nil {
+			a, aerr := netip.ParseAddr(s)
+			if aerr != nil {
+				log.Fatalf("TRUSTED_PROXIES: %q is not a CIDR or address", s)
+			}
+			p = netip.PrefixFrom(a, a.BitLen())
+		}
+		out = append(out, p)
+	}
+	if len(out) > 0 {
+		log.Printf("trusting X-Forwarded-For from %v", out)
+	}
+	return out
 }
