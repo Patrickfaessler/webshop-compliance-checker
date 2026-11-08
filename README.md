@@ -5,7 +5,7 @@ Software-Praktikum WS 2026/27, Gruppe 9 (Fässler/Kahraman).
 Enter a shop URL, get a plain-language report on accessibility (WCAG 2.1 AA / EAA) and EU e-commerce obligations with
 a concrete fix per problem. No accounts. Algorithms first, Claude only as fallback.
 
-**Stack:** Flutter (web) + Go (both mandatory), headless Chromium via chromedp, axe-core, PostgreSQL (planned), Claude API (fallback, planned).
+**Stack:** Flutter (web) + Go (both mandatory), headless Chromium via chromedp, axe-core, PostgreSQL on Supabase (planned, ADR-5), Claude API (fallback, planned).
 
 ## Layout
 
@@ -27,8 +27,8 @@ winget install GoLang.Go
 winget install Git.Git
 winget install GitHub.cli
 winget install Google.Chrome           # Flutter web dev; Edge also works for the backend crawler
-winget install Microsoft.WSL           # needed by Docker Desktop, reboot afterwards
-winget install Docker.DockerDesktop
+winget install Microsoft.WSL           # only for Docker (test shop, optional local DB); admin shell, reboot afterwards
+winget install Docker.DockerDesktop    # optional until the WooCommerce test shop (M1)
 git clone --depth 1 -b stable https://github.com/flutter/flutter.git C:\src\flutter
 # then add C:\src\flutter\bin to your user PATH and open a new terminal
 ```
@@ -54,7 +54,10 @@ cd backend; $env:CORS_ORIGIN = 'http://localhost:5000'; go run ./cmd/api
 cd frontend; flutter run -d chrome --web-port 5000
 ```
 
-Database (from milestone M1): `docker compose -f deploy/docker-compose.yml up -d`.
+Database (from milestone M1): a shared **Supabase** project (EU region), used only as PostgreSQL by the Go backend (ADR-5).
+Copy `deploy/.env.example` to `deploy/.env` and paste the **session pooler** connection string as `DATABASE_URL`.
+Never commit `deploy/.env` and never put the database string or Supabase keys into the Flutter app.
+Offline alternative: `docker compose -f deploy/docker-compose.yml --profile localdb up -d`.
 
 ## Working method
 

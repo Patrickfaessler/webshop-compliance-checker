@@ -10,6 +10,7 @@ Webshop compliance checker (working title). Flutter web frontend + Go backend (b
 3. **Algorithms first, Claude as fallback** (ADR-3, `specs/06-detection-and-ai.md`). Never add an LLM call where a deterministic check can work.
    The LLM may never turn `failed` into `passed`; it must quote evidence.
 4. **No user accounts** (ADR-1). Do not add login, user tables or per-person storage.
+   Supabase is only a hosted Postgres for the Go backend (ADR-5): no Supabase Auth, no Supabase client in Flutter.
 5. **EU-level legal scope** (ADR-2). Legal rules cite EU articles in `specs/01-legal-scope.md`. Do not mark a legal rule `verified` without the `legal-checked` entry.
 6. **Never submit forms or place orders on third-party shops** (`specs/05-crawler.md`). SSRF rules are mandatory for any outbound request.
 7. **Honesty:** never describe a score or result as "compliant". Use the disclaimer from `specs/01-legal-scope.md`.
@@ -24,7 +25,7 @@ Webshop compliance checker (working title). Flutter web frontend + Go backend (b
 
 - Backend: `cd backend; go vet ./...; go test ./...`
 - Frontend: `cd frontend; flutter analyze; flutter test`
-- DB: `docker compose -f deploy/docker-compose.yml up -d`
+- DB: Supabase-hosted Postgres via `DATABASE_URL` in `deploy/.env` (ADR-5, session pooler). Offline: `docker compose -f deploy/docker-compose.yml --profile localdb up -d`
 
 ## Status
 
@@ -45,4 +46,4 @@ Webshop compliance checker (working title). Flutter web frontend + Go backend (b
   API base via `--dart-define=API_BASE=http://localhost:8080`. Not yet viewed in a real browser. Missing: finding detail, suggestions, PDF, re-scan.
   To try it: backend `$env:CORS_ORIGIN='http://localhost:5000'; go run ./cmd/api`, frontend `flutter run -d chrome --web-port 5000`.
 - In a fresh PowerShell, set PATH first: `$env:Path = 'C:\src\flutter\bin;' + [Environment]::GetEnvironmentVariable('Path','Machine') + ';' + [Environment]::GetEnvironmentVariable('Path','User')`.
-- Next: A5 (keyboard, CDP key events); fix templates and `GET /findings/{id}` detail view; legal rules R1–R7 with the lexicon/Claude fallback; egress proxy; PostgreSQL store/queue once WSL 2 is set up for Docker.
+- Next: A5 (keyboard, CDP key events); fix templates and `GET /findings/{id}` detail view; legal rules R1–R7 with the lexicon/Claude fallback; egress proxy; PostgreSQL store on Supabase + River queue (needs the team's `DATABASE_URL`).

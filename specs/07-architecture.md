@@ -5,12 +5,12 @@ Status: draft · Flutter (web) frontend and Go backend are **mandatory**.
 ## Components
 
 ```
-Flutter Web  ──HTTPS/JSON──▶  Go API  ──SQL──▶  PostgreSQL (scans, results, job queue)
+Flutter Web  ──HTTPS/JSON──▶  Go API  ──SQL──▶  PostgreSQL on Supabase (scans, results, job queue; ADR-5)
                                                    ▲
                                           Go Worker (rule engine)
                                    ┌───────────────┼────────────────┐
                            Headless Chromium     Claude API     (fallback only)
-                           (playwright-go, axe-core)
+                           (chromedp, axe-core; ADR-4)
                                    │
                               Egress proxy ──▶ public internet (private ranges blocked)
 ```
@@ -24,7 +24,7 @@ Flutter Web  ──HTTPS/JSON──▶  Go API  ──SQL──▶  PostgreSQL (
 | Lexicon | per-language term lists | `backend/internal/lexicon` |
 | Scoring | pure functions from `04-scoring.md` | `backend/internal/scoring` |
 | LLM client | Claude fallback behind interface | `backend/internal/llm` |
-| PostgreSQL | scans, pages, findings, suggestions, rate-limit counters, job queue | `deploy/` |
+| PostgreSQL (Supabase, ADR-5) | scans, pages, findings, suggestions, rate-limit counters, job queue. Only the Go backend connects (`DATABASE_URL`, session pooler) | `backend/migrations/` |
 
 ## Technology choices
 
@@ -33,11 +33,12 @@ Flutter Web  ──HTTPS/JSON──▶  Go API  ──SQL──▶  PostgreSQL (
 | Frontend | Flutter (web), Dart | mandatory |
 | State / routing / HTTP | StatefulWidgets, go_router, `http` | in use; Riverpod/dio dropped for now (small app), revisit if state grows |
 | Backend | Go ≥ 1.23, `net/http`, chi | mandatory language; libs proposal |
-| Queue | River on PostgreSQL | no extra infrastructure |
+| Database | Supabase-hosted PostgreSQL, EU region (ADR-5); local Docker Postgres optional | plain Postgres: no lock-in |
+| Queue | River on PostgreSQL | no extra infrastructure; needs the session pooler, not the transaction pooler |
 | DB access | sqlc + pgx | typed SQL |
-| Browser | playwright-go + Chromium; axe-core injected | |
+| Browser | chromedp + Edge/Chrome/Chromium; axe-core injected | ADR-4 |
 | PDF | server side (Go library, decide in M4) | |
-| Ops | Docker Compose: postgres, api, worker, chromium, proxy, testshop | |
+| Ops | Docker Compose: api, worker, chromium, proxy, testshop (+ optional `localdb` Postgres) | database itself is on Supabase |
 
 ## Rule interface (contract, N5)
 
@@ -68,4 +69,6 @@ IP addresses are stored only hashed with a rotating salt and only for rate limit
 
 ## Deployment
 
-Local: `docker compose -f deploy/docker-compose.yml up`. The same compose file is the reference environment for N1.
+Database: Supabase project, connection string in `deploy/.env` as `DATABASE_URL` (see `deploy/.env.example`).
+Local services: `docker compose -f deploy/docker-compose.yml up` (test shop, later proxy). Offline database: add `--profile localdb`.
+The compose file plus a Supabase EU project is the reference environment for N1.
