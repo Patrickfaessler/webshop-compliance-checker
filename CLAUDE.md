@@ -28,7 +28,8 @@ Webshop compliance checker (working title). Flutter web frontend + Go backend (b
 
 ## Status
 
-- Installed: Go 1.27, Git (winget), Flutter 3.47.9 (cloned to `C:\src\flutter`, **not on PATH**).
+- Installed: Go 1.27, Git, GitHub CLI (logged in as Patrickfaessler), Flutter 3.47.9 (`C:\src\flutter`, on the user PATH since 2026-11-08; old shells still need the PATH line below).
+  Repo: https://github.com/Patrickfaessler/webshop-compliance-checker (public, MIT; axe-core MPL-2.0, see THIRD_PARTY_NOTICES.md). Line endings LF via `.gitattributes`.
 - Backend verified: `go vet`, `go test ./...` green. Done: scoring (S-1), rule A6 (verified against the corpus), SSRF address filter (`backend/internal/ssrf`).
   `backend/internal/corpus` runs `testcorpus/cases`; register each new rule in `allRules()` there.
 - Browser: `internal/crawler` drives Edge/Chrome/Chromium with **chromedp** (not Playwright, ADR-4; chromedp v0.22 has a generic API: `chromedp.Run/Do/Call/Listen/Evaluate[T]`).
