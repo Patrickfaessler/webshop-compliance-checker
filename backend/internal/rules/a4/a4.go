@@ -18,7 +18,7 @@ func New() Rule { return Rule{} }
 
 func (Rule) Meta() rules.Meta {
 	return rules.Meta{
-		ID: "A4", Name: "Heading structure", Area: "accessibility", Severity: rules.Warning,
+		ID: "A4", Name: "Heading structure", NameDe: "Überschriftenstruktur", Area: "accessibility", Severity: rules.Warning,
 		SummaryDe: "Die Überschriften der Seite sind nicht sauber gegliedert.",
 	}
 }

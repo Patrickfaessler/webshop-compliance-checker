@@ -1,6 +1,7 @@
 import 'package:compliance_checker/api/api_client.dart';
 import 'package:compliance_checker/main.dart';
 import 'package:compliance_checker/screens/start_page.dart';
+import 'package:compliance_checker/strings.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -145,7 +146,12 @@ void main() {
       expect(find.text('Hinweis · A6 Seitensprache angegeben'), findsOneWidget);
       expect(find.text('Sprache fehlt.'), findsOneWidget);
       expect(find.text('DISCLAIMER-VOM-SERVER'), findsOneWidget);
-      expect(find.textContaining('bis 05.12.2026 gültig'), findsOneWidget);
+      // ADR-6: nothing is stored; the page says so and offers the downloads
+      final until = formatTimeDe(DateTime.utc(2026, 12, 5, 12));
+      expect(find.textContaining("wird nicht gespeichert"), findsOneWidget);
+      expect(find.textContaining("bis $until Uhr"), findsOneWidget);
+      expect(find.text("Bericht als PDF"), findsOneWidget);
+      expect(find.text("Daten als JSON"), findsOneWidget);
     });
 
     // Spec: S-1 — no score is shown as "nicht berechenbar", never as compliant.

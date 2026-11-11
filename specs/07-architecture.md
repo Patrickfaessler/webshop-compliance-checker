@@ -37,7 +37,7 @@ Flutter Web  ──HTTPS/JSON──▶  Go API  ──SQL──▶  PostgreSQL, 
 | Queue | River on PostgreSQL | no extra infrastructure; needs the session pooler, not the transaction pooler |
 | DB access | sqlc + pgx | typed SQL |
 | Browser | chromedp + Edge/Chrome/Chromium; axe-core injected | ADR-4 |
-| PDF | server side (Go library, decide in M4) | |
+| PDF | server side, `github.com/go-pdf/fpdf` (ADR-6) | pure Go; cp1252 for umlauts |
 | Ops | Docker Compose: api, worker, chromium, proxy, testshop (+ optional `localdb` Postgres) | database: native local Postgres or Supabase |
 
 ## Rule interface (contract, N5)
@@ -55,6 +55,9 @@ type Rule interface {
 (`structural|dictionary|pattern|ai`). Exact types: `backend/internal/rules/rule.go`.
 
 ## Data model (no user table, ADR-1)
+
+> ADR-6: for now scans are **not stored**; they live in memory for 1 hour (`scan.MemoryStore`). The tables below are the
+> PostgreSQL store (ADR-5), used only with `STORE=postgres`.
 
 | Table | Fields |
 | --- | --- |

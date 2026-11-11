@@ -57,7 +57,10 @@ cd frontend; flutter run -d chrome --web-port 5000
 
 ## Database
 
-Default is a **local PostgreSQL 17** on your own machine (ADR-5). Without `DATABASE_URL` the backend keeps scans in memory.
+**Currently not needed (ADR-6):** scans are not stored. The backend keeps each result in memory for 1 hour and the user downloads it as PDF or JSON.
+The PostgreSQL store below is kept for later and only used with `STORE=postgres`. The database tests still run when `TEST_DATABASE_URL` is set.
+
+Setup, if you want it: a **local PostgreSQL 17** on your own machine (ADR-5).
 
 ```powershell
 winget install PostgreSQL.PostgreSQL.17      # admin prompt; remember the superuser password
@@ -86,5 +89,5 @@ Our own code is MIT-licensed (`LICENSE`). Embedded third-party code keeps its ow
 - **`An Application Control policy has blocked this file`** when running `go test`: Windows Smart App Control blocked a freshly
   built test binary in `%TEMP%`. It is not a code error. Build elsewhere:
   `New-Item -ItemType Directory -Force "$env:LOCALAPPDATA\gotest-tmp"; $env:GOTMPDIR = "$env:LOCALAPPDATA\gotest-tmp"; go test ./...`
-- **API says `database: none`**: `DATABASE_URL` is not set; check `deploy/.env`. The API then keeps scans only in memory.
+- **Results are gone after a restart or after one hour**: intended (ADR-6). Download the PDF or JSON to keep a result.
 - **`password authentication failed for user "checker"`**: the role or password in `deploy/.env` does not match; see "Database".

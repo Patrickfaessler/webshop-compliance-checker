@@ -45,3 +45,10 @@ String formatDateDe(DateTime d) {
   String two(int n) => n.toString().padLeft(2, '0');
   return '${two(l.day)}.${two(l.month)}.${l.year}';
 }
+
+/// Local time as HH:mm, e.g. "15:04".
+String formatTimeDe(DateTime d) {
+  final l = d.toLocal();
+  String two(int n) => n.toString().padLeft(2, '0');
+  return '${two(l.hour)}:${two(l.minute)}';
+}

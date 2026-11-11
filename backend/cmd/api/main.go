@@ -48,8 +48,15 @@ func main() {
 		log.Printf("settings loaded from %s", used)
 	}
 
+	// ADR-6: scans are not stored; they stay in memory for scan.Retention (1 hour), the user downloads the report.
+	// The PostgreSQL store (ADR-5) is only used when explicitly switched on with STORE=postgres.
 	var store scan.Store
-	if dbURL := os.Getenv("DATABASE_URL"); dbURL != "" {
+	switch mode := os.Getenv("STORE"); mode {
+	case "postgres":
+		dbURL := os.Getenv("DATABASE_URL")
+		if dbURL == "" {
+			log.Fatal("STORE=postgres needs DATABASE_URL")
+		}
 		openCtx, cancel := context.WithTimeout(ctx, 20*time.Second)
 		pg, err := pgstore.Open(openCtx, dbURL)
 		cancel()
@@ -58,11 +65,15 @@ func main() {
 		}
 		defer pg.Close()
 		store = pg
-		log.Printf("database: PostgreSQL (migrations applied)")
-		go purgeLoop(ctx, pg)
-	} else {
-		store = scan.NewMemoryStore()
-		log.Printf("database: none (DATABASE_URL not set), scans are kept in memory and lost on restart")
+		log.Printf("store: PostgreSQL (migrations applied), scans kept for %v", scan.Retention)
+		go purgeLoop(ctx, func() (int, error) { n, err := pg.Purge(ctx); return int(n), err })
+	case "", "memory":
+		mem := scan.NewMemoryStore()
+		store = mem
+		log.Printf("store: memory only, scans are not saved and deleted after %v (ADR-6)", scan.Retention)
+		go purgeLoop(ctx, func() (int, error) { return mem.Purge(), nil })
+	default:
+		log.Fatalf("unknown STORE=%q (use memory or postgres)", mode)
 	}
 	limiter := ratelimit.New(3, time.Hour, 1)
 	jobs := make(chan worker.Job, 32)
@@ -81,10 +92,16 @@ func main() {
 		source = worker.FetchSource{Client: fetcher}
 	}
 
+	allRules := []rules.Rule{a1.New(), a2.New(), a3.New(), a4.New(), a6.New()}
+	ruleMeta := map[string]rules.Meta{}
+	for _, r := range allRules {
+		ruleMeta[r.Meta().ID] = r.Meta()
+	}
+
 	runner := &worker.Runner{
 		Store:   store,
 		Source:  source,
-		Rules:   []rules.Rule{a1.New(), a2.New(), a3.New(), a4.New(), a6.New()},
+		Rules:   allRules,
 		Release: limiter.Release,
 		Timeout: 5 * time.Minute, // C-1
 	}
@@ -96,6 +113,7 @@ func main() {
 		Store: store, Limiter: limiter, Jobs: jobs, Salt: salt,
 		HostCooldown: 10 * time.Minute, // C-RL
 		AllowOrigin:  os.Getenv("CORS_ORIGIN"),
+		RuleMeta:     ruleMeta,
 	}
 	httpSrv := &http.Server{Addr: addr, Handler: srv.Handler(), ReadHeaderTimeout: 10 * time.Second}
 
@@ -112,12 +130,12 @@ func main() {
 	}
 }
 
-// purgeLoop deletes expired scans every hour (N4: 30-day retention).
-func purgeLoop(ctx context.Context, pg *pgstore.Store) {
-	t := time.NewTicker(time.Hour)
+// purgeLoop deletes expired scans every minute (N4, ADR-6: 1-hour retention).
+func purgeLoop(ctx context.Context, purge func() (int, error)) {
+	t := time.NewTicker(time.Minute)
 	defer t.Stop()
 	for {
-		if n, err := pg.Purge(ctx); err != nil {
+		if n, err := purge(); err != nil {
 			log.Printf("purge: %v", err)
 		} else if n > 0 {
 			log.Printf("purge: removed %d expired scans", n)

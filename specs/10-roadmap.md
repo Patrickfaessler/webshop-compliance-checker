@@ -10,4 +10,4 @@ Dates to be set with the course schedule. A milestone is done when its listed sp
 | M3 | Rules A1–A5 | F3 | corpus targets met. **Progress (2026-11-05):** A1, A2, A3, A4 done and verified on the corpus (recall 3/3, 0 false alarms each, real browser + axe-core). Open: A5 keyboard, fix templates. |
 | M4 | Rules R1–R7 with dictionaries and Claude fallback | F4–F6, D-* | corpus targets met, algorithm share measured |
 | M5 | Report, detail view, fix templates, AI suggestions | F7, F8 | UI complete for Must requirements |
-| M6 | Should items (re-scan comparison, PDF), self-scan, field test, final presentation | F9, F10, N7 | field test report written |
+| M6 | Should items, self-scan, field test, final presentation | N7 | field test report written. **2026-11-08:** PDF/JSON download (F10, F13) already done with ADR-6; re-scan comparison (F9) postponed |

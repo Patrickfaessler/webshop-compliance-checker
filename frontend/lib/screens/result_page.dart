@@ -3,22 +3,34 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../api/api_client.dart';
 import '../strings.dart';
 
-/// Progress and report for one scan. Spec: F7 (score, severity, list), F11 (link), N3 (disclaimer).
+/// Starts a file download; returns false if it could not be started.
+typedef Downloader = Future<bool> Function(Uri uri);
+
+/// Default downloader: the API answers with `Content-Disposition: attachment`, so opening the URL in the
+/// same tab downloads the file and the page stays where it is.
+Future<bool> launchDownload(Uri uri) =>
+    launchUrl(uri, webOnlyWindowName: '_self');
+
+/// Progress and report for one scan. Spec: F7 (score, severity, list), F10/F13 (downloads),
+/// F11 (link, 1 hour), N3 (disclaimer), ADR-6 (nothing is stored).
 class ResultPage extends StatefulWidget {
   const ResultPage({
     super.key,
     required this.api,
     required this.scanId,
     this.pollInterval = const Duration(seconds: 2),
+    this.onDownload = launchDownload,
   });
 
   final ApiClient api;
   final String scanId;
   final Duration pollInterval;
+  final Downloader onDownload;
 
   @override
   State<ResultPage> createState() => _ResultPageState();
@@ -69,6 +81,16 @@ class _ResultPageState extends State<ResultPage> {
       } else {
         _timer ??= Timer.periodic(widget.pollInterval, (_) => _load());
       }
+    }
+  }
+
+  Future<void> _download(BuildContext context, String ext) async {
+    final messenger = ScaffoldMessenger.of(context);
+    final ok =
+        await widget.onDownload(widget.api.reportUri(widget.scanId, ext));
+    if (!ok) {
+      messenger.showSnackBar(const SnackBar(
+          content: Text('Der Download konnte nicht gestartet werden.')));
     }
   }
 
@@ -145,29 +167,11 @@ class _ResultPageState extends State<ResultPage> {
       if (s.status == 'incomplete')
         const Text(
             'Die Prüfung wurde wegen des Zeitlimits nicht vollständig durchgeführt.'),
-      if (s.expiresAt != null) ...[
-        const SizedBox(height: 8),
-        Row(
-          children: [
-            Expanded(
-              child: Text(
-                'Dieser Link ist bis ${formatDateDe(s.expiresAt!)} gültig. Wer den Link kennt, kann das Ergebnis sehen.',
-                style: theme.textTheme.bodySmall,
-              ),
-            ),
-            TextButton(
-              onPressed: () async {
-                final messenger = ScaffoldMessenger.of(context);
-                await Clipboard.setData(
-                    ClipboardData(text: Uri.base.toString()));
-                messenger.showSnackBar(
-                    const SnackBar(content: Text('Link kopiert.')));
-              },
-              child: const Text('Link kopieren'),
-            ),
-          ],
-        ),
-      ],
+      const SizedBox(height: 8),
+      _DownloadCard(
+        status: s,
+        onDownload: (ext) => _download(context, ext),
+      ),
       const SizedBox(height: 24),
       if (f != null) ...[
         Text('Prüfregeln', style: theme.textTheme.titleLarge),
@@ -187,6 +191,67 @@ class _ResultPageState extends State<ResultPage> {
       const SizedBox(height: 32),
       Text(s.disclaimerDe ?? disclaimerDe, style: theme.textTheme.bodySmall),
     ];
+  }
+}
+
+/// Tells the user that nothing is stored and offers the downloads (ADR-6, F10, F13, F11).
+class _DownloadCard extends StatelessWidget {
+  const _DownloadCard({required this.status, required this.onDownload});
+
+  final ScanStatus status;
+  final void Function(String ext) onDownload;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final until = status.expiresAt == null
+        ? 'eine Stunde lang'
+        : 'bis ${formatTimeDe(status.expiresAt!)} Uhr';
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('Bericht herunterladen', style: theme.textTheme.titleMedium),
+            const SizedBox(height: 8),
+            Text(
+              'Dieses Ergebnis wird nicht gespeichert. Es ist nur $until über '
+              'diesen Link abrufbar und wird danach gelöscht. Laden Sie den '
+              'Bericht herunter, um ihn zu behalten.',
+            ),
+            const SizedBox(height: 12),
+            Wrap(
+              spacing: 12,
+              runSpacing: 8,
+              children: [
+                FilledButton.icon(
+                  onPressed: () => onDownload('pdf'),
+                  icon: const Icon(Icons.picture_as_pdf_outlined),
+                  label: const Text('Bericht als PDF'),
+                ),
+                OutlinedButton.icon(
+                  onPressed: () => onDownload('json'),
+                  icon: const Icon(Icons.data_object),
+                  label: const Text('Daten als JSON'),
+                ),
+                TextButton.icon(
+                  onPressed: () async {
+                    final messenger = ScaffoldMessenger.of(context);
+                    await Clipboard.setData(
+                        ClipboardData(text: Uri.base.toString()));
+                    messenger.showSnackBar(
+                        const SnackBar(content: Text('Link kopiert.')));
+                  },
+                  icon: const Icon(Icons.link),
+                  label: const Text('Link kopieren'),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
   }
 }
 

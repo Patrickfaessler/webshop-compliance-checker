@@ -104,8 +104,8 @@ func TestCreateAndGetScan(t *testing.T) {
 	if len(st.ID) < 22 || st.Status != "queued" || st.DisclaimerDe == "" {
 		t.Fatalf("unexpected status: %+v", st)
 	}
-	if exp := time.Until(st.ExpiresAt); exp < 29*24*time.Hour || exp > 31*24*time.Hour {
-		t.Fatalf("expiry not ~30 days: %v", exp)
+	if exp := time.Until(st.ExpiresAt); exp < 59*time.Minute || exp > 61*time.Minute { // ADR-6
+		t.Fatalf("expiry not ~1 hour: %v", exp)
 	}
 	if len(e.jobs) != 1 {
 		t.Fatal("job not queued")
@@ -236,5 +236,63 @@ func TestClientKeyIsHashed(t *testing.T) {
 	req.RemoteAddr = "203.0.113.7:9999" // same IP, other port
 	if e.srv.clientKey(req) != k {
 		t.Fatal("key must not depend on the port")
+	}
+}
+
+// runScan creates a scan through the API and runs it with a page that fails A6.
+func runScan(t *testing.T, e env) string {
+	t.Helper()
+	var st scanStatus
+	decode(t, e.do("POST", "/api/scans", `{"url":"https://shop.example/","areas":["accessibility"]}`), &st)
+	r := &worker.Runner{Store: e.st, Source: fakeSource{html: "<html><body></body></html>"}, Rules: []rules.Rule{a6.New()}, Release: e.srv.Limiter.Release}
+	r.Run(context.Background(), <-e.jobs)
+	return st.ID
+}
+
+// Spec: F10, F13, ADR-6 — finished scans download as JSON and PDF attachments.
+func TestReportDownloads(t *testing.T) {
+	e := newEnv(3, 3)
+	e.srv.RuleMeta = map[string]rules.Meta{"A6": a6.New().Meta()}
+	id := runScan(t, e)
+
+	rec := e.do("GET", "/api/scans/"+id+"/report.json", "")
+	if rec.Code != 200 || !strings.HasPrefix(rec.Header().Get("Content-Type"), "application/json") {
+		t.Fatalf("json: %d %s", rec.Code, rec.Header().Get("Content-Type"))
+	}
+	if cd := rec.Header().Get("Content-Disposition"); !strings.HasPrefix(cd, `attachment; filename="webshop-check_shop.example_`) || !strings.HasSuffix(cd, `.json"`) {
+		t.Fatalf("content-disposition: %q", cd)
+	}
+	var rep struct {
+		Format      string
+		RuleResults []struct{ RuleID, NameDe, State string }
+		Findings    []struct{ Selector string }
+	}
+	decode(t, rec, &rep)
+	if rep.Format != "webshop-check-report" || rep.RuleResults[0].NameDe != "Seitensprache angegeben" || rep.RuleResults[0].State != "failed" || rep.Findings[0].Selector != "html" {
+		t.Fatalf("report: %+v", rep)
+	}
+
+	rec = e.do("GET", "/api/scans/"+id+"/report.pdf", "")
+	if rec.Code != 200 || rec.Header().Get("Content-Type") != "application/pdf" || !bytes.HasPrefix(rec.Body.Bytes(), []byte("%PDF-")) {
+		t.Fatalf("pdf: %d %s", rec.Code, rec.Header().Get("Content-Type"))
+	}
+	if rec.Header().Get("Cache-Control") != "no-store" {
+		t.Fatal("reports must not be cached")
+	}
+}
+
+// Spec: F10, F13 — a running scan gives 409, an unknown or expired one 404 with the one-hour hint.
+func TestReportNotReady(t *testing.T) {
+	e := newEnv(3, 3)
+	var st scanStatus
+	decode(t, e.do("POST", "/api/scans", `{"url":"https://shop.example/"}`), &st)
+	for _, ext := range []string{"json", "pdf"} {
+		if rec := e.do("GET", "/api/scans/"+st.ID+"/report."+ext, ""); rec.Code != http.StatusConflict {
+			t.Errorf("%s queued: %d", ext, rec.Code)
+		}
+		rec := e.do("GET", "/api/scans/nope/report."+ext, "")
+		if rec.Code != 404 || !strings.Contains(rec.Body.String(), "nach einer Stunde") {
+			t.Errorf("%s unknown: %d %s", ext, rec.Code, rec.Body)
+		}
 	}
 }

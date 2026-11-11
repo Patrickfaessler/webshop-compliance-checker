@@ -12,9 +12,10 @@ void main() {
 }
 
 class App extends StatefulWidget {
-  const App({super.key, required this.api});
+  const App({super.key, required this.api, this.onDownload = launchDownload});
 
   final ApiClient api;
+  final Downloader onDownload;
 
   @override
   State<App> createState() => _AppState();
@@ -26,8 +27,11 @@ class _AppState extends State<App> {
       GoRoute(path: '/', builder: (_, __) => StartPage(api: widget.api)),
       GoRoute(
         path: '/r/:id',
-        builder: (_, state) =>
-            ResultPage(api: widget.api, scanId: state.pathParameters['id']!),
+        builder: (_, state) => ResultPage(
+          api: widget.api,
+          scanId: state.pathParameters['id']!,
+          onDownload: widget.onDownload,
+        ),
       ),
     ],
   );

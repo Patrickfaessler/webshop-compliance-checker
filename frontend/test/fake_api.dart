@@ -36,6 +36,10 @@ class FakeApi implements ApiClient {
   }
 
   @override
+  Uri reportUri(String id, String ext) =>
+      Uri.parse('http://api.test/api/scans/$id/report.$ext');
+
+  @override
   Future<ScanFindings> getFindings(String id) async =>
       findings ?? const ScanFindings(ruleResults: [], findings: []);
 }

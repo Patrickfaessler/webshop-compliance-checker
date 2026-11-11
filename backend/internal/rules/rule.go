@@ -51,6 +51,7 @@ const (
 type Meta struct {
 	ID         string // "A1", "R6"
 	Name       string
+	NameDe     string // German rule name for the UI and the PDF report
 	Area       string // "accessibility" or "legal"
 	Severity   Severity
 	AIFallback bool   // whether the rule spec allows the Claude fallback
