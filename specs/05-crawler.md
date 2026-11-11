@@ -11,6 +11,7 @@ Read "Playwright" in this file as "headless Chromium via chromedp".
 | Max pages per scan | 50 |
 | Domain | exact host of the start URL plus its `www` variant; no other subdomains |
 | Link depth | 3 from start page |
+| Duplicates | a directory and its index file (`/x/`, `/x/index.html`, `index.htm`, `index.php`) are one page |
 | Page load timeout | 15 s load + wait for network idle (max 2 s) |
 | Total scan time | 5 min, then report is marked `incomplete` |
 | Parallel tabs per scan | 4 |
@@ -47,10 +48,15 @@ Banner not found → R3/R4 `not_assessable` unless trackers load in `no_interact
 - Re-check after every redirect and for **every** sub-request the browser makes (egress proxy).
 - Browser runs in its own container with no route to internal networks; only the egress proxy has outbound access.
 - Pin the resolved IP for the connection (defence against DNS rebinding).
+- **C-SSRF-DEV (local testing only):** `ALLOW_LOOPBACK_TARGETS=1` additionally allows hosts that resolve only to
+  loopback addresses (`127/8`, `::1`), on any port, so the local test shops (T-3) can be scanned through the app.
+  All other blocked ranges stay blocked. The API refuses to start with this switch unless `API_ADDR` listens on
+  a loopback address. Never set it on a deployed server.
 
 ## Abuse limits without accounts (F12 / C-RL)
 
-- Per client IP: max 3 scans per hour, max 1 running scan.
-- Per target host: max 1 scan per 10 minutes (the cached result is returned instead).
+- Per client IP: max 3 scans per hour (configurable with `RATE_LIMIT_PER_HOUR` for local testing), max 1 running scan.
+- Per start address: a scan of the same start URL (scheme, host, path; query and fragment ignored) within 10 minutes returns the existing result instead of scanning again. Per URL, not per host, because several shops can share one host (hosting platforms, the test shops on GitHub Pages, T-3).
+- **C-RL-PROXY:** behind a reverse proxy, `TRUSTED_PROXIES` (comma-separated CIDRs) names the proxy addresses. Only for a request whose connecting address is in that list, the client IP is the **last** entry of `X-Forwarded-For` (the one the proxy itself appended; earlier entries are client-controlled). Otherwise `X-Forwarded-For` is ignored. Empty = never trust it.
 - Global cap on running scans; excess scans are queued and show the queue position.
 - Optional proof-of-work or CAPTCHA token on `POST /scans` if abuse appears (decision deferred).

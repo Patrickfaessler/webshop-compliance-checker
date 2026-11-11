@@ -17,7 +17,7 @@ var t0 = time.Date(2026, 11, 8, 12, 0, 0, 0, time.UTC)
 
 func sample(id, host string, created time.Time) scan.Scan {
 	return scan.Scan{
-		ID: id, Host: host, StartURL: "https://" + host + "/", Areas: []string{"accessibility", "legal"},
+		ID: id, Host: host, TargetKey: "https://" + host + "/", StartURL: "https://" + host + "/", Areas: []string{"accessibility", "legal"},
 		Status: scan.Queued, CreatedAt: created, ExpiresAt: created.Add(scan.Retention),
 	}
 }
@@ -107,8 +107,8 @@ func Run(t *testing.T, newStore Factory) {
 		}
 	})
 
-	// Spec: C-RL — latest non-failed scan of a host since a time.
-	t.Run("latest for host", func(t *testing.T) {
+	// Spec: C-RL — latest non-failed scan of a start address (target key) since a time.
+	t.Run("latest for target", func(t *testing.T) {
 		st, setNow := newStore(t)
 		setNow(t0)
 		for _, s := range []scan.Scan{
@@ -125,15 +125,24 @@ func Run(t *testing.T, newStore Factory) {
 		if err := st.Create(failed); err != nil {
 			t.Fatal(err)
 		}
-		got, ok := st.LatestForHost("shop.example", t0.Add(-10*time.Minute))
+		got, ok := st.LatestForTarget("https://shop.example/", t0.Add(-10*time.Minute))
 		if !ok || got.ID != "new" {
 			t.Fatalf("got %q ok=%v, want new", got.ID, ok)
 		}
-		if _, ok := st.LatestForHost("shop.example", t0.Add(-time.Second)); ok {
+		if _, ok := st.LatestForTarget("https://shop.example/", t0.Add(-time.Second)); ok {
 			t.Fatal("nothing should be that recent")
 		}
-		if _, ok := st.LatestForHost("unknown.example", t0.Add(-time.Hour)); ok {
-			t.Fatal("unknown host found")
+		if _, ok := st.LatestForTarget("https://unknown.example/", t0.Add(-time.Hour)); ok {
+			t.Fatal("unknown target found")
+		}
+		// same host, other path: a different shop (several shops on one host)
+		samePath := sample("shop2", "shop.example", t0.Add(-1*time.Minute))
+		samePath.TargetKey = "https://shop.example/shop2"
+		if err := st.Create(samePath); err != nil {
+			t.Fatal(err)
+		}
+		if got, _ := st.LatestForTarget("https://shop.example/", t0.Add(-10*time.Minute)); got.ID != "new" {
+			t.Fatalf("other path must not count: got %q", got.ID)
 		}
 	})
 }

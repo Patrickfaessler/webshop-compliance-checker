@@ -46,7 +46,7 @@ func newEnv(maxPerWindow, maxRunning int) env {
 	jobs := make(chan worker.Job, 8)
 	srv := &Server{
 		Store: st, Limiter: ratelimit.New(maxPerWindow, time.Hour, maxRunning), Jobs: jobs,
-		Lookup: lookup, Salt: []byte("test"), HostCooldown: 10 * time.Minute,
+		Lookup: lookup, Salt: []byte("test"), TargetCooldown: 10 * time.Minute,
 	}
 	return env{srv, srv.Handler(), jobs, st}
 }
@@ -120,14 +120,27 @@ func TestCreateAndGetScan(t *testing.T) {
 	}
 }
 
-// Spec: C-RL — same host within the cooldown returns the existing scan; no second job.
-func TestHostCooldownReturnsExisting(t *testing.T) {
+// Spec: C-RL — the same start address within the cooldown returns the existing scan; no second job.
+// Case, trailing slash, query and fragment do not make it a different address.
+func TestTargetCooldownReturnsExisting(t *testing.T) {
 	e := newEnv(3, 3)
 	var a, b scanStatus
-	decode(t, e.do("POST", "/api/scans", `{"url":"https://shop.example/"}`), &a)
-	rec := e.do("POST", "/api/scans", `{"url":"https://SHOP.example/other"}`)
+	decode(t, e.do("POST", "/api/scans", `{"url":"https://shop.example/teehaus/"}`), &a)
+	rec := e.do("POST", "/api/scans", `{"url":"https://SHOP.example/teehaus?utm=1#top"}`)
 	decode(t, rec, &b)
 	if rec.Code != http.StatusOK || a.ID != b.ID || len(e.jobs) != 1 {
+		t.Fatalf("code=%d ids %q/%q jobs=%d", rec.Code, a.ID, b.ID, len(e.jobs))
+	}
+}
+
+// Spec: C-RL, T-3 — another shop on the same host (other path) is scanned, not served from the cooldown.
+func TestTargetCooldownOtherPathOnSameHost(t *testing.T) {
+	e := newEnv(3, 3)
+	var a, b scanStatus
+	decode(t, e.do("POST", "/api/scans", `{"url":"https://shop.example/teehaus/"}`), &a)
+	rec := e.do("POST", "/api/scans", `{"url":"https://shop.example/radwerk/"}`)
+	decode(t, rec, &b)
+	if rec.Code != http.StatusAccepted || a.ID == b.ID || len(e.jobs) != 2 {
 		t.Fatalf("code=%d ids %q/%q jobs=%d", rec.Code, a.ID, b.ID, len(e.jobs))
 	}
 }
@@ -294,5 +307,33 @@ func TestReportNotReady(t *testing.T) {
 		if rec.Code != 404 || !strings.Contains(rec.Body.String(), "nach einer Stunde") {
 			t.Errorf("%s unknown: %d %s", ext, rec.Code, rec.Body)
 		}
+	}
+}
+
+// Spec: C-RL-PROXY — X-Forwarded-For counts only from a trusted proxy, and only its last entry.
+func TestClientKeyBehindProxy(t *testing.T) {
+	e := newEnv(3, 3)
+	e.srv.TrustedProxies = []netip.Prefix{netip.MustParsePrefix("172.31.250.0/24")}
+	key := func(remote, xff string) string {
+		req := httptest.NewRequest("GET", "/", nil)
+		req.RemoteAddr = remote
+		if xff != "" {
+			req.Header.Set("X-Forwarded-For", xff)
+		}
+		return e.srv.clientKey(req)
+	}
+	a := key("172.31.250.2:5000", "198.51.100.1")
+	b := key("172.31.250.2:5000", "198.51.100.2")
+	if a == b {
+		t.Fatal("two clients behind the proxy must get different keys")
+	}
+	if key("172.31.250.2:5000", "203.0.113.9, 198.51.100.1") != a {
+		t.Fatal("a spoofed earlier X-Forwarded-For entry must not change the key")
+	}
+	if key("203.0.113.5:1", "198.51.100.1") != key("203.0.113.5:1", "198.51.100.2") {
+		t.Fatal("X-Forwarded-For from an untrusted address must be ignored")
+	}
+	if key("172.31.250.2:5000", "") != key("172.31.250.2:6000", "") {
+		t.Fatal("without the header the proxy address is the key")
 	}
 }

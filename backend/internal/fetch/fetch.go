@@ -26,6 +26,7 @@ const (
 type Client struct {
 	hc       *http.Client
 	lookup   ssrf.LookupFunc
+	Policy   ssrf.Policy // zero = strict (C-SSRF); AllowLoopback only for local testing (C-SSRF-DEV)
 	MaxBytes int64
 }
 
@@ -59,7 +60,7 @@ func (c *Client) dial(ctx context.Context, network, addr string) (net.Conn, erro
 	if port == "80" {
 		scheme = "http"
 	}
-	_, addrs, err := ssrf.Validate(ctx, scheme+"://"+net.JoinHostPort(host, port)+"/", c.lookup)
+	_, addrs, err := c.Policy.Validate(ctx, scheme+"://"+net.JoinHostPort(host, port)+"/", c.lookup)
 	if err != nil {
 		return nil, err
 	}
@@ -80,7 +81,7 @@ func (c *Client) checkRedirect(req *http.Request, via []*http.Request) error {
 	if len(via) >= maxRedirects {
 		return errors.New("too many redirects")
 	}
-	_, _, err := ssrf.Validate(req.Context(), req.URL.String(), c.lookup)
+	_, _, err := c.Policy.Validate(req.Context(), req.URL.String(), c.lookup)
 	return err
 }
 
@@ -93,7 +94,7 @@ type Page struct {
 
 // Get fetches rawURL. The URL is validated first so callers get a clean ErrBlocked.
 func (c *Client) Get(ctx context.Context, rawURL string) (Page, error) {
-	if _, _, err := ssrf.Validate(ctx, rawURL, c.lookup); err != nil {
+	if _, _, err := c.Policy.Validate(ctx, rawURL, c.lookup); err != nil {
 		return Page{}, err
 	}
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, rawURL, nil)

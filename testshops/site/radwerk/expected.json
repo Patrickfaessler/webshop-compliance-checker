@@ -1,0 +1,134 @@
+{
+  "shop": "Radwerk Alpin",
+  "startPath": "radwerk/",
+  "kind": "many defects",
+  "expected": {
+    "A1": "failed",
+    "A2": "failed",
+    "A3": "failed",
+    "A4": "failed",
+    "A6": "failed"
+  },
+  "expectedScore": 0,
+  "pages": [
+    "index.html",
+    "kategorie-1.html",
+    "kategorie-2.html",
+    "produkt-lampe.html",
+    "produkt-tasche.html",
+    "produkt-schloss.html",
+    "warenkorb.html",
+    "kasse.html",
+    "impressum.html",
+    "datenschutz.html",
+    "agb.html"
+  ],
+  "planted": [
+    {
+      "page": "index.html",
+      "rule": "A6",
+      "what": "\u003chtml\u003e ohne lang-Attribut"
+    },
+    {
+      "page": "kategorie-1.html",
+      "rule": "A6",
+      "what": "\u003chtml\u003e ohne lang-Attribut"
+    },
+    {
+      "page": "kategorie-2.html",
+      "rule": "A6",
+      "what": "\u003chtml\u003e ohne lang-Attribut"
+    },
+    {
+      "page": "produkt-lampe.html",
+      "rule": "A6",
+      "what": "\u003chtml\u003e ohne lang-Attribut"
+    },
+    {
+      "page": "produkt-schloss.html",
+      "rule": "A6",
+      "what": "\u003chtml\u003e ohne lang-Attribut"
+    },
+    {
+      "page": "produkt-tasche.html",
+      "rule": "A6",
+      "what": "\u003chtml\u003e ohne lang-Attribut"
+    },
+    {
+      "page": "index.html, kategorie-*.html, produkt-*.html",
+      "rule": "A1",
+      "what": "Preis-Hinweis in #aaaaaa auf Weiß (2,3:1)"
+    },
+    {
+      "page": "kategorie-*.html",
+      "rule": "A2",
+      "what": "Produktbilder ohne alt-Attribut"
+    },
+    {
+      "page": "produkt-tasche.html",
+      "rule": "A2",
+      "what": "Alternativtext ist ein Dateiname"
+    },
+    {
+      "page": "alle Seiten (Kopfbereich)",
+      "rule": "A3",
+      "what": "Suchfeld ohne Beschriftung"
+    },
+    {
+      "page": "alle Seiten (Fußbereich)",
+      "rule": "A3",
+      "what": "Newsletter-Feld nur mit Platzhalter"
+    },
+    {
+      "page": "index.html",
+      "rule": "A4",
+      "what": "h1 direkt gefolgt von h3"
+    },
+    {
+      "page": "produkt-*.html",
+      "rule": "A4",
+      "what": "zwei h1-Überschriften"
+    },
+    {
+      "page": "warenkorb.html",
+      "rule": "A4",
+      "what": "leere h2-Überschrift"
+    },
+    {
+      "page": "impressum.html",
+      "rule": "R1",
+      "what": "E-Mail-Adresse fehlt"
+    },
+    {
+      "page": "impressum.html",
+      "rule": "R1",
+      "what": "UID-Nummer fehlt (bedingte Angabe)"
+    },
+    {
+      "page": "datenschutz.html",
+      "rule": "R2",
+      "what": "Pflichtabschnitte fehlen"
+    },
+    {
+      "page": "alle Seiten",
+      "rule": "R3",
+      "what": "Cookie-Banner ohne Ablehnen-Möglichkeit auf erster Ebene"
+    },
+    {
+      "page": "—",
+      "rule": "R5",
+      "what": "keine Widerrufsbelehrung und kein Link dazu"
+    },
+    {
+      "page": "kasse.html",
+      "rule": "R6",
+      "what": "Bestellbutton heißt \"Bestellen\" statt „zahlungspflichtig bestellen“"
+    },
+    {
+      "page": "—",
+      "rule": "R7",
+      "what": "keine Funktion „Vertrag widerrufen“"
+    }
+  ],
+  "note": "expected/expectedScore cover the implemented rules (A1-A4, A6). R-rule defects are planted and listed for later; the scanner does not check them yet."
+}

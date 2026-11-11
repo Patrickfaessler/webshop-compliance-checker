@@ -1,0 +1,29 @@
+{
+  "shop": "Teehaus Bergkristall",
+  "startPath": "teehaus/",
+  "kind": "exemplary",
+  "expected": {
+    "A1": "passed",
+    "A2": "passed",
+    "A3": "passed",
+    "A4": "passed",
+    "A6": "passed"
+  },
+  "expectedScore": 100,
+  "pages": [
+    "index.html",
+    "kategorie-1.html",
+    "kategorie-2.html",
+    "produkt-sencha.html",
+    "produkt-minze.html",
+    "produkt-rooibos.html",
+    "warenkorb.html",
+    "kasse.html",
+    "impressum.html",
+    "datenschutz.html",
+    "agb.html",
+    "widerruf.html"
+  ],
+  "planted": [],
+  "note": "expected/expectedScore cover the implemented rules (A1-A4, A6). R-rule defects are planted and listed for later; the scanner does not check them yet."
+}

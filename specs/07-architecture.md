@@ -75,3 +75,18 @@ IP addresses are stored only hashed with a rotating salt and only for rate limit
 Database: `DATABASE_URL` in `deploy/.env` (see `deploy/.env.example`): local PostgreSQL by default, Supabase optional (ADR-5).
 Local services: `docker compose -f deploy/docker-compose.yml up` (test shop, later proxy). Offline database: add `--profile localdb`.
 The compose file plus a local PostgreSQL 17 is the reference environment for N1.
+
+### Server deployment (DEP-1)
+
+`deploy/docker-compose.server.yml` runs the whole stack on one server behind Traefik with automatic Let's Encrypt
+certificates. The operator sets only `DOMAIN` (and `ACME_EMAIL`) in `deploy/.env`; everything else is derived:
+
+| Host | Service |
+| --- | --- |
+| `check.<DOMAIN>` | Flutter web app; `check.<DOMAIN>/api/*` goes to the Go API (same origin, no CORS) |
+| `teehaus.<DOMAIN>`, `radwerk.<DOMAIN>`, `seifen.<DOMAIN>` | the three test shops (T-3), one per subdomain |
+
+- The API container includes Chromium (`CHROME_NO_SANDBOX=1`) and is not published on a host port; only Traefik is.
+- DEP-2: the web app built with an empty `API_BASE` calls the API on its own origin.
+- Scans stay in memory (ADR-6); no database container is needed. `ALLOW_LOOPBACK_TARGETS` is never set (C-SSRF-DEV).
+- Rate limits use the real client IP from Traefik (C-RL-PROXY).

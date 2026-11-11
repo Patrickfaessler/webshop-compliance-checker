@@ -8,6 +8,7 @@ import (
 	"errors"
 	"net"
 	"net/http"
+	"net/netip"
 	"slices"
 	"strconv"
 	"strings"
@@ -26,14 +27,17 @@ type Server struct {
 	Limiter *ratelimit.Limiter
 	Jobs    chan<- worker.Job
 	Lookup  ssrf.LookupFunc // nil = system resolver
+	SSRF    ssrf.Policy     // zero = strict; AllowLoopback only for local testing (C-SSRF-DEV)
 	Salt    []byte          // rotating salt for hashing client IPs (N4)
 	Now     func() time.Time
-	// HostCooldown: a scan of the same host within this time returns the existing result (C-RL).
-	HostCooldown time.Duration
+	// TargetCooldown: a scan of the same start address (scan.TargetKey) within this time returns the existing result (C-RL).
+	TargetCooldown time.Duration
 	// AllowOrigin enables CORS for the Flutter web dev server (e.g. http://localhost:5000). Empty = off.
 	AllowOrigin string
 	// RuleMeta gives German names and severities for the downloadable report (F10, F13).
 	RuleMeta map[string]rules.Meta
+	// TrustedProxies are reverse-proxy addresses whose X-Forwarded-For is believed (C-RL-PROXY). Empty = none.
+	TrustedProxies []netip.Prefix
 }
 
 func (s *Server) now() time.Time {
@@ -128,7 +132,7 @@ func (s *Server) createScan(w http.ResponseWriter, r *http.Request) {
 		problem(w, http.StatusBadRequest, "Unbekannter Prüfbereich. Erlaubt: accessibility, legal.", 0)
 		return
 	}
-	u, _, err := ssrf.Validate(r.Context(), req.URL, s.Lookup)
+	u, _, err := s.SSRF.Validate(r.Context(), req.URL, s.Lookup)
 	if err != nil {
 		msg := "Diese Adresse konnte nicht geprüft werden. Bitte eine öffentliche http- oder https-Adresse eingeben."
 		if !errors.Is(err, ssrf.ErrBlocked) {
@@ -139,9 +143,11 @@ func (s *Server) createScan(w http.ResponseWriter, r *http.Request) {
 	}
 	host := strings.ToLower(u.Hostname())
 
-	// Same host recently scanned: return that result instead of scanning again (C-RL).
-	if s.HostCooldown > 0 {
-		if prev, found := s.Store.LatestForHost(host, s.now().Add(-s.HostCooldown)); found {
+	// Same start address recently scanned: return that result instead of scanning again (C-RL).
+	// Per address, not per host: several shops can share one host.
+	target := scan.TargetKey(u)
+	if s.TargetCooldown > 0 {
+		if prev, found := s.Store.LatestForTarget(target, s.now().Add(-s.TargetCooldown)); found {
 			writeJSON(w, http.StatusOK, toStatus(prev))
 			return
 		}
@@ -166,7 +172,7 @@ func (s *Server) createScan(w http.ResponseWriter, r *http.Request) {
 	}
 	now := s.now()
 	sc := scan.Scan{
-		ID: id, Host: host, StartURL: u.String(), Areas: areas, Status: scan.Queued,
+		ID: id, Host: host, TargetKey: target, StartURL: u.String(), Areas: areas, Status: scan.Queued,
 		PreviousScanID: req.PreviousScanID, CreatedAt: now, ExpiresAt: now.Add(scan.Retention),
 	}
 	if err := s.Store.Create(sc); err != nil {
@@ -245,11 +251,17 @@ func normalizeAreas(in []string) ([]string, bool) {
 }
 
 // clientKey hashes the client IP with the rotating salt. The IP itself is never stored (N4).
-// X-Forwarded-For is deliberately ignored; a trusted reverse proxy setting is a later decision.
+// Behind a trusted proxy the last X-Forwarded-For entry is the client (C-RL-PROXY); otherwise the header is ignored.
 func (s *Server) clientKey(r *http.Request) string {
 	ip, _, err := net.SplitHostPort(r.RemoteAddr)
 	if err != nil {
 		ip = r.RemoteAddr
+	}
+	if xff := r.Header.Values("X-Forwarded-For"); len(xff) > 0 && s.trustedProxy(ip) {
+		parts := strings.Split(xff[len(xff)-1], ",")
+		if last, err := netip.ParseAddr(strings.TrimSpace(parts[len(parts)-1])); err == nil {
+			ip = last.Unmap().String()
+		}
 	}
 	sum := sha256.Sum256(append(append([]byte{}, s.Salt...), ip...))
 	return hex.EncodeToString(sum[:8])
@@ -328,4 +340,17 @@ func (s *Server) reportPDF(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	download(w, "application/pdf", rep.FileName("pdf"), b)
+}
+
+func (s *Server) trustedProxy(ip string) bool {
+	a, err := netip.ParseAddr(ip)
+	if err != nil {
+		return false
+	}
+	for _, p := range s.TrustedProxies {
+		if p.Contains(a.Unmap()) {
+			return true
+		}
+	}
+	return false
 }

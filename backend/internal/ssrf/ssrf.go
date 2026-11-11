@@ -74,6 +74,17 @@ func IsBlockedIP(addr netip.Addr) bool {
 // DNS rebinding. Call it again for every redirect and every browser sub-request.
 // Spec: C-SSRF.
 func Validate(ctx context.Context, raw string, lookup LookupFunc) (*url.URL, []netip.Addr, error) {
+	return Policy{}.Validate(ctx, raw, lookup)
+}
+
+// Policy relaxes Validate for local testing. The zero value is the strict default.
+type Policy struct {
+	// AllowLoopback permits hosts that resolve only to loopback addresses, on any port (C-SSRF-DEV).
+	AllowLoopback bool
+}
+
+// Validate is like the package-level Validate, with the policy's exceptions. Spec: C-SSRF, C-SSRF-DEV.
+func (pol Policy) Validate(ctx context.Context, raw string, lookup LookupFunc) (*url.URL, []netip.Addr, error) {
 	if lookup == nil {
 		lookup = DefaultLookup
 	}
@@ -89,9 +100,6 @@ func Validate(ctx context.Context, raw string, lookup LookupFunc) (*url.URL, []n
 	if u.User != nil {
 		return nil, nil, fmt.Errorf("%w: credentials in URL", ErrBlocked)
 	}
-	if p := u.Port(); p != "" && p != "80" && p != "443" {
-		return nil, nil, fmt.Errorf("%w: port %s", ErrBlocked, p)
-	}
 	host := u.Hostname()
 	if host == "" {
 		return nil, nil, fmt.Errorf("%w: no host", ErrBlocked)
@@ -106,10 +114,25 @@ func Validate(ctx context.Context, raw string, lookup LookupFunc) (*url.URL, []n
 			return nil, nil, fmt.Errorf("%w: host does not resolve", ErrBlocked)
 		}
 	}
+	if pol.AllowLoopback && allLoopback(addrs) {
+		return u, addrs, nil
+	}
+	if p := u.Port(); p != "" && p != "80" && p != "443" {
+		return nil, nil, fmt.Errorf("%w: port %s", ErrBlocked, p)
+	}
 	for _, a := range addrs {
 		if IsBlockedIP(a) {
 			return nil, nil, fmt.Errorf("%w: address %s is not public", ErrBlocked, a)
 		}
 	}
 	return u, addrs, nil
+}
+
+func allLoopback(addrs []netip.Addr) bool {
+	for _, a := range addrs {
+		if !a.Unmap().IsLoopback() {
+			return false
+		}
+	}
+	return len(addrs) > 0
 }

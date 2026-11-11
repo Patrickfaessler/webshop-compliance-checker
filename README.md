@@ -15,6 +15,7 @@ a concrete fix per problem. No accounts. Algorithms first, Claude only as fallba
 | `backend/` | Go module `compliancechecker` (api, crawler, rules, scoring, worker) |
 | `frontend/` | Flutter web app |
 | `testcorpus/` | HTML cases with expected results per rule |
+| `testshops/` | three fictional multi-page test shops (generator + generated site), published on GitHub Pages |
 | `deploy/` | Docker Compose, `.env.example` |
 | `infos` | original project sketch (V1) |
 
@@ -54,6 +55,27 @@ cd backend; $env:CORS_ORIGIN = 'http://localhost:5000'; go run ./cmd/api
 # terminal 2: Flutter web app on :5000
 cd frontend; flutter run -d chrome --web-port 5000
 ```
+
+## Deploy on a server (Docker + Traefik)
+
+One compose file runs the app, the API (with Chromium) and the three test shops behind Traefik with Let's Encrypt.
+You only enter your domain once.
+
+1. DNS: point `check`, `teehaus`, `radwerk` and `seifen` (or a wildcard `*`) of your domain at the server. Open ports 80 and 443.
+2. On the server: `git clone` the repo, then `cp deploy/.env.example deploy/.env` and set `DOMAIN=example.org` and `ACME_EMAIL=...`.
+3. `docker compose -f deploy/docker-compose.server.yml up -d --build`
+   If the server uses ufw, also run `sudo ufw allow 80/tcp; sudo ufw allow 443/tcp`. Visitors get through without it
+   (Docker bypasses ufw), but the scanner reaches the shops via the server's own public IP, and that path is filtered.
+
+| Address | What |
+| --- | --- |
+| `https://check.<DOMAIN>` | the app (`/api` goes to the Go API) |
+| `https://teehaus.<DOMAIN>`, `radwerk.`, `seifen.` | the test shops, expected results in `testshops/README.md` |
+
+Update: `git pull`, then the same `up -d --build`. Logs: `docker compose -f deploy/docker-compose.server.yml logs -f api`.
+Scans stay in memory (ADR-6), so no database is needed. Spec: `specs/07-architecture.md` (DEP-1).
+If the server already runs Traefik, drop the `traefik` service and attach `app`, `api` and `shops` to its network
+(and set `TRUSTED_PROXIES` to that network's subnet).
 
 ## Database
 

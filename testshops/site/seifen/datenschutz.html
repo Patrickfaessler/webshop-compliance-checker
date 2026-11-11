@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex, nofollow">
+  <title>Datenschutz – Seifenmanufaktur Lavendel</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+<p class="testnote" role="note">Fiktiver Testshop für ein Software-Praktikum: keine echten Produkte, keine Bestellung möglich, alle Firmendaten sind erfunden.</p>
+<section id="cookie" class="cookie" aria-label="Cookie-Hinweis">
+  <p><strong>Cookies</strong></p>
+  <p>Wir verwenden technisch notwendige Cookies. Optionale Statistik-Cookies setzen wir nur mit Ihrer Zustimmung.</p>
+  <p class="cookie-buttons">
+    <button type="button" data-cookie="accept">Alle akzeptieren</button>
+    <button type="button" data-cookie="reject">Nur notwendige</button>
+    <button type="button" data-cookie="settings" class="secondary">Einstellungen</button>
+  </p>
+</section>
+<header class="site">
+  <a class="brand" href="index.html">Seifenmanufaktur Lavendel</a>
+  <p class="tagline">Handgemachte Seifen aus dem Salzkammergut</p>
+  <nav aria-label="Hauptnavigation">
+    <a href="index.html">Start</a>
+    <a href="kategorie-1.html">Körperseifen</a>
+    <a href="kategorie-2.html">Haarseifen</a>
+    <a href="warenkorb.html">Warenkorb</a>
+  </nav>
+  <form class="search" role="search" action="#" onsubmit="return false">
+    <label for="q" class="sr-only">Suche im Shop</label>
+    <input id="q" type="search" name="q">
+    <button type="submit">Suchen</button>
+  </form>
+</header>
+<main>
+<h1>Datenschutzerklärung</h1>
+<p>Fiktiver Beispieltext für den Testshop.</p>
+<h2>Verantwortlicher</h2>
+<p>Seifenmanufaktur Lavendel OG (fiktiv), Am Teststeg 3, 4820 Bad Ischl, Österreich, post@seifen-lavendel.example.</p>
+<h2>Zwecke und Rechtsgrundlagen</h2>
+<p>Wir verarbeiten Ihre Daten zur Abwicklung von Bestellungen (Art. 6 Abs. 1 lit. b DSGVO).</p>
+<h2>Empfänger</h2>
+<p>Versanddienstleister und Zahlungsanbieter, soweit für die Bestellung nötig.</p>
+<h2>Speicherdauer</h2>
+<p>Bis zum Ablauf der gesetzlichen Aufbewahrungsfristen.</p>
+<h2>Ihre Rechte</h2>
+<p>Auskunft, Berichtigung, Löschung, Einschränkung, Datenübertragbarkeit und Widerspruch.</p>
+<h2>Beschwerderecht</h2>
+<p>Sie können sich bei der Datenschutzbehörde beschweren.</p>
+</main>
+<footer class="site">
+  <form class="newsletter" action="#" onsubmit="return false">
+    <label for="nl">E-Mail für den Newsletter</label>
+    <input id="nl" type="email" name="nl">
+    <button type="submit">Anmelden</button>
+  </form>
+  <nav aria-label="Rechtliches">
+    <a href="impressum.html">Impressum</a>
+    <a href="datenschutz.html">Datenschutz</a>
+    <a href="agb.html">AGB</a>
+    <a href="widerruf.html">Widerrufsbelehrung</a>
+  </nav>
+  <p>© 2026 Seifenmanufaktur Lavendel OG (fiktiv)</p>
+</footer>
+<script>
+  document.querySelectorAll('[data-cookie]').forEach(function (b) {
+    b.addEventListener('click', function () { document.getElementById('cookie').hidden = true; });
+  });
+</script>
+</body>
+</html>

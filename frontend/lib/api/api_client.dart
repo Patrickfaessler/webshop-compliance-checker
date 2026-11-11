@@ -128,10 +128,14 @@ abstract class ApiClient {
 const _apiBase =
     String.fromEnvironment('API_BASE', defaultValue: 'http://localhost:8080');
 
+/// An empty API_BASE means "same origin": the server deployment serves the app and /api on one host (DEP-2).
+String resolveApiBase(String configured, Uri page) =>
+    configured.isEmpty ? page.origin : configured;
+
 class HttpApiClient implements ApiClient {
   HttpApiClient({http.Client? client, String? baseUrl})
       : _http = client ?? http.Client(),
-        _base = baseUrl ?? _apiBase;
+        _base = baseUrl ?? resolveApiBase(_apiBase, Uri.base);
 
   final http.Client _http;
   final String _base;

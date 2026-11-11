@@ -1,0 +1,32 @@
+/* Test shop stylesheet. All text colours have at least 4.5:1 contrast, except the planted .low / .note-low. */
+* { box-sizing: border-box; }
+body { margin: 0; font-family: system-ui, -apple-system, "Segoe UI", sans-serif; color: #1a1a1a; background: #ffffff; line-height: 1.5; }
+main, header.site, footer.site, .cookie, .testnote { max-width: 960px; margin: 0 auto; padding: 0 16px; }
+a { color: #5b2a86; }
+a:focus-visible, button:focus-visible, input:focus-visible { outline: 3px solid #5b2a86; outline-offset: 2px; }
+.testnote { background: #fff3cd; color: #1a1a1a; padding: 8px 16px; margin: 0 auto; }
+.cookie { background: #eef1f5; color: #1a1a1a; padding: 8px 16px; margin: 8px auto; border: 1px solid #c9d1db; }
+.cookie p { margin: 4px 0; }
+button, .button { background: #5b2a86; color: #ffffff; border: 0; padding: 8px 14px; font: inherit; cursor: pointer; text-decoration: none; display: inline-block; }
+button.secondary { background: #ffffff; color: #5b2a86; border: 2px solid #5b2a86; }
+header.site { padding-top: 16px; padding-bottom: 16px; border-bottom: 1px solid #d0d0d0; }
+.brand { font-size: 1.6rem; font-weight: 700; text-decoration: none; color: #5b2a86; }
+.tagline { margin: 0 0 8px; color: #444444; }
+nav a { margin-right: 16px; }
+.search { margin-top: 8px; }
+.search input, .newsletter input, .checkout input, .product input { padding: 6px; border: 1px solid #767676; font: inherit; }
+.grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 16px; }
+.card { border: 1px solid #d0d0d0; padding: 12px; }
+.card img, .product img { max-width: 100%; height: auto; display: block; }
+.price { font-weight: 700; color: #7a3b00; }
+.hint { color: #555555; font-size: 0.9rem; }
+.hint.low { color: #aaaaaa; }
+.note-low { color: #9a9a9a; }
+.product { display: flex; flex-wrap: wrap; gap: 24px; }
+.checkout label { display: block; margin-top: 8px; }
+.checkout fieldset label, .checkout input[type=checkbox] + label { display: inline; }
+.cart { border-collapse: collapse; }
+.cart th, .cart td { border: 1px solid #d0d0d0; padding: 6px 10px; text-align: left; }
+footer.site { margin-top: 32px; padding-top: 16px; padding-bottom: 24px; border-top: 1px solid #d0d0d0; }
+.newsletter label { display: block; }
+.sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0; }
