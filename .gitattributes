@@ -1,0 +1,14 @@
+# Normalise line endings: LF in the repository and in working copies (Go, Dart and the specs all expect LF).
+* text=auto eol=lf
+
+# Windows-only scripts keep CRLF
+*.bat text eol=crlf
+*.cmd text eol=crlf
+*.ps1 text eol=crlf
+
+# Binary files
+*.png binary
+*.jpg binary
+*.ico binary
+*.woff binary
+*.woff2 binary
