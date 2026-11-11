@@ -23,6 +23,7 @@ Status: draft
 ## Levels
 
 - Go unit tests per rule package; table-driven, each test names its spec ID in a comment (`// Spec: A6-1`).
+- Database tests (PostgreSQL store, migrations) run only when `TEST_DATABASE_URL` is set and are skipped otherwise, so the suite runs without any database (ADR-5). Never point it at the shared project database: tests may truncate tables.
 - Corpus runner: `go test ./... -run Corpus` loads all cases, runs the engine with a **fake LLM**, compares with `expected.json`, prints the metrics table.
 - Flutter widget tests for the report, detail view and disclaimer (N3).
 - SSRF tests: table of internal addresses, redirect chains, DNS-rebinding stub.

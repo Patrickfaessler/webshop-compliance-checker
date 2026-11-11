@@ -10,6 +10,7 @@ Webshop compliance checker (working title). Flutter web frontend + Go backend (b
 3. **Algorithms first, Claude as fallback** (ADR-3, `specs/06-detection-and-ai.md`). Never add an LLM call where a deterministic check can work.
    The LLM may never turn `failed` into `passed`; it must quote evidence.
 4. **No user accounts** (ADR-1). Do not add login, user tables or per-person storage.
+   Database: local Postgres by default, Supabase optional (ADR-5); only the Go backend connects, no Supabase Auth, no DB access from Flutter.
 5. **EU-level legal scope** (ADR-2). Legal rules cite EU articles in `specs/01-legal-scope.md`. Do not mark a legal rule `verified` without the `legal-checked` entry.
 6. **Never submit forms or place orders on third-party shops** (`specs/05-crawler.md`). SSRF rules are mandatory for any outbound request.
 7. **Honesty:** never describe a score or result as "compliant". Use the disclaimer from `specs/01-legal-scope.md`.
@@ -24,7 +25,7 @@ Webshop compliance checker (working title). Flutter web frontend + Go backend (b
 
 - Backend: `cd backend; go vet ./...; go test ./...`
 - Frontend: `cd frontend; flutter analyze; flutter test`
-- DB: `docker compose -f deploy/docker-compose.yml up -d`
+- DB: local PostgreSQL 17 (Windows service `postgresql-17`, localhost:5432) via `DATABASE_URL` in `deploy/.env` (ADR-5). Supabase optional. psql: `C:\Program Files\PostgreSQL\17\bin\psql.exe`
 
 ## Status
 
@@ -37,7 +38,9 @@ Webshop compliance checker (working title). Flutter web frontend + Go backend (b
   Browser path from `CHROME_PATH` or auto-detected (Edge is installed on this machine). axe-core 4.10.2 is embedded (`internal/crawler/axe/axe.min.js`).
   Browser tests skip themselves when no browser exists. Without a browser the API falls back to start-page-only scanning.
 - Rules done and verified on the corpus: A1, A2, A3, A4, A6 (register new ones in `cmd/api/main.go` AND `internal/corpus/corpus_test.go`). Missing: A5 and all R rules.
-- API (interim, in-memory store, worker in the same process): `POST /api/scans`, `GET /api/scans/{id}`, `GET /api/scans/{id}/findings`
+- Database: `internal/pgstore` (pgx, migrations in `backend/migrations`, applied on start-up) when `DATABASE_URL` is set, else in-memory. `cmd/api` loads `deploy/.env` (local: role `checker`, DBs `checker` and `checker_test`). Store contract test: `internal/scan/storetest`.
+- Windows Smart App Control sometimes blocks a freshly built test binary in %TEMP% ("Application Control policy has blocked this file"). Not a code error: rerun with `GOTMPDIR` set to another folder, e.g. `$env:GOTMPDIR="$env:LOCALAPPDATAgotest-tmp"`.
+- API (interim, worker in the same process): `POST /api/scans`, `GET /api/scans/{id}`, `GET /api/scans/{id}/findings`
   with SSRF check, rate limits (3/h, 1 running per hashed IP), host cooldown, 30-day expiry. Run: `cd backend; go run ./cmd/api` (env `API_ADDR`, `CORS_ORIGIN`).
   Live-tested against https://example.com (browser crawl + axe-core through the API). Packages: `api`, `crawler`, `domutil`, `fetch`, `ratelimit`, `scan`, `ssrf`, `worker`, `scoring`, `rules/*`.
 - Frontend verified: `flutter analyze`, `flutter test` (16 tests), `flutter build web` green. Screens: start page (URL + areas, F1), result page at `/r/:id`
@@ -45,4 +48,4 @@ Webshop compliance checker (working title). Flutter web frontend + Go backend (b
   API base via `--dart-define=API_BASE=http://localhost:8080`. Not yet viewed in a real browser. Missing: finding detail, suggestions, PDF, re-scan.
   To try it: backend `$env:CORS_ORIGIN='http://localhost:5000'; go run ./cmd/api`, frontend `flutter run -d chrome --web-port 5000`.
 - In a fresh PowerShell, set PATH first: `$env:Path = 'C:\src\flutter\bin;' + [Environment]::GetEnvironmentVariable('Path','Machine') + ';' + [Environment]::GetEnvironmentVariable('Path','User')`.
-- Next: A5 (keyboard, CDP key events); fix templates and `GET /findings/{id}` detail view; legal rules R1–R7 with the lexicon/Claude fallback; egress proxy; PostgreSQL store/queue once WSL 2 is set up for Docker.
+- Next: A5 (keyboard, CDP key events); fix templates and `GET /findings/{id}` detail view; legal rules R1–R7 with the lexicon/Claude fallback; egress proxy; PostgreSQL store + River queue on the local Postgres.
