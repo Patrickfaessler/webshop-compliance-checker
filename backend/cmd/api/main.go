@@ -106,17 +106,24 @@ func main() {
 
 	fetcher := fetch.New(nil)
 	fetcher.Policy = policy
-	var source worker.PageSource
+	var (
+		source    worker.PageSource
+		annotator worker.Annotator // screenshots for the visual report (specs/11-report.md)
+		printer   api.PDFPrinter   // PDF printed from the HTML report (ADR-7)
+	)
 	if path, err := crawler.FindBrowser(""); err == nil {
 		log.Printf("browser crawler enabled (%s)", path)
+		cr := &crawler.Crawler{
+			ExecPath: path, NoSandbox: os.Getenv("CHROME_NO_SANDBOX") == "1",
+			Validate: func(ctx context.Context, raw string) error { _, _, err := policy.Validate(ctx, raw, nil); return err },
+		}
 		source = worker.CrawlSource{
-			Crawler: &crawler.Crawler{
-				ExecPath: path, NoSandbox: os.Getenv("CHROME_NO_SANDBOX") == "1",
-				Validate: func(ctx context.Context, raw string) error { _, _, err := policy.Validate(ctx, raw, nil); return err },
-			},
+			Crawler: cr,
 			Options: crawler.DefaultOptions(),
 			Robots:  fetcher,
 		}
+		annotator = worker.CrawlAnnotator{Crawler: cr}
+		printer = cr
 	} else {
 		log.Printf("WARNING: no browser found (%v): scanning the start page only, rules that need axe-core report 'not assessable'", err)
 		source = worker.FetchSource{Client: fetcher}
@@ -129,11 +136,12 @@ func main() {
 	}
 
 	runner := &worker.Runner{
-		Store:   store,
-		Source:  source,
-		Rules:   allRules,
-		Release: limiter.Release,
-		Timeout: 5 * time.Minute, // C-1
+		Store:     store,
+		Source:    source,
+		Annotator: annotator,
+		Rules:     allRules,
+		Release:   limiter.Release,
+		Timeout:   5 * time.Minute, // C-1
 	}
 	for i := 0; i < 2; i++ {
 		go runner.Loop(ctx, jobs)
@@ -144,6 +152,7 @@ func main() {
 		TargetCooldown: 10 * time.Minute, // C-RL
 		AllowOrigin:    os.Getenv("CORS_ORIGIN"),
 		RuleMeta:       ruleMeta,
+		PDF:            printer,
 		TrustedProxies: trustedProxies(os.Getenv("TRUSTED_PROXIES")),
 	}
 	httpSrv := &http.Server{Addr: addr, Handler: srv.Handler(), ReadHeaderTimeout: 10 * time.Second}

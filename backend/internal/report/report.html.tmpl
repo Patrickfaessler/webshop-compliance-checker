@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<title>Prüfbericht Webshop-Check: {{.Host}}</title>
+<style>
+:root {
+  --ink: #1b1d21; --muted: #4a5059; --line: #d5d9e0; --paper: #ffffff; --soft: #f4f6f9;
+  --mark: #c2002f; --mark-ink: #ffffff; --focus: #ffb000; --link: #0b55c2;
+  --crit-bg: #fde3e6; --crit-ink: #86001c; --warn-bg: #fff0d1; --warn-ink: #663d00;
+  --note-bg: #e2ebfa; --note-ink: #193b75; --pass-ink: #0d5a2c; --fail-ink: #86001c;
+}
+* { box-sizing: border-box; }
+html { background: var(--paper); }
+body { margin: 0; color: var(--ink); background: var(--paper);
+  font: 16px/1.5 system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif; }
+a { color: var(--link); }
+a:focus-visible, .mark:focus-visible { outline: 3px solid var(--focus); outline-offset: 2px; }
+.wrap { max-width: 1280px; margin: 0 auto; padding: 24px 16px 48px; }
+h1 { font-size: 1.75rem; line-height: 1.25; margin: 0 0 4px; }
+h2 { font-size: 1.3rem; margin: 36px 0 12px; }
+h3 { font-size: 1.05rem; margin: 0; }
+.sub { color: var(--muted); margin: 0 0 20px; overflow-wrap: anywhere; }
+.meta { display: grid; grid-template-columns: max-content 1fr; gap: 4px 16px; margin: 0 0 20px; }
+.meta dt { font-weight: 600; }
+.meta dd { margin: 0; overflow-wrap: anywhere; }
+.note { border: 1px solid var(--line); background: var(--soft); padding: 12px 16px; border-radius: 6px; }
+.score { display: flex; flex-wrap: wrap; gap: 12px; margin: 12px 0; }
+.score > div { border: 1px solid var(--line); border-radius: 6px; padding: 10px 14px; min-width: 150px; }
+.score b { display: block; font-size: 1.5rem; }
+table { border-collapse: collapse; width: 100%; }
+th, td { text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--line); vertical-align: top; }
+th { background: var(--soft); }
+.badge { display: inline-block; font-size: .8rem; font-weight: 700; padding: 1px 8px; border-radius: 999px; white-space: nowrap; }
+.sev-critical { background: var(--crit-bg); color: var(--crit-ink); }
+.sev-warning { background: var(--warn-bg); color: var(--warn-ink); }
+.sev-notice { background: var(--note-bg); color: var(--note-ink); }
+.st-passed { color: var(--pass-ink); font-weight: 600; }
+.st-failed { color: var(--fail-ink); font-weight: 600; }
+.toc { padding-left: 20px; }
+.toc li { overflow-wrap: anywhere; }
+.page { border-top: 2px solid var(--ink); padding-top: 8px; }
+.page-url { color: var(--muted); overflow-wrap: anywhere; margin: 4px 0 16px; }
+.grid { display: grid; grid-template-columns: minmax(0, 3fr) minmax(0, 2fr); gap: 24px; align-items: start; }
+.shotcol { position: sticky; top: 8px; max-height: calc(100vh - 16px); overflow: auto;
+  border: 1px solid var(--line); border-radius: 6px; background: var(--soft); }
+.shotbox { position: relative; line-height: 0; }
+.shotbox img { width: 100%; height: auto; display: block; }
+.mark { position: absolute; min-width: 10px; min-height: 10px; border: 3px solid var(--mark);
+  background: rgba(194, 0, 47, .08); text-decoration: none; line-height: 1; }
+.mark span, .cropmark span { position: absolute; right: 100%; top: -3px; margin-right: 2px; background: var(--mark); color: var(--mark-ink);
+  font: 700 12px/1 system-ui, Arial, sans-serif; padding: 3px 5px; border-radius: 4px 0 0 4px; }
+.mark:target, .mark:hover { outline: 4px solid var(--focus); background: rgba(255, 176, 0, .2); }
+.truncated { font-size: .9rem; color: var(--muted); padding: 8px 12px; line-height: 1.4; }
+.cards { list-style: none; margin: 0; padding: 0; display: grid; gap: 14px; }
+.card { border: 1px solid var(--line); border-radius: 6px; padding: 12px 14px; scroll-margin-top: 12px; break-inside: avoid; }
+.card:target { border-color: var(--focus); box-shadow: 0 0 0 3px var(--focus); }
+.card-head { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-bottom: 6px; }
+.num { display: inline-block; min-width: 28px; text-align: center; background: var(--mark); color: var(--mark-ink);
+  font-weight: 700; border-radius: 4px; padding: 2px 6px; text-decoration: none; }
+.num.plain { background: var(--ink); }
+.card p { margin: 6px 0; }
+.loc { font-size: .9rem; color: var(--muted); overflow-wrap: anywhere; }
+pre { background: var(--soft); border: 1px solid var(--line); border-radius: 4px; padding: 8px; margin: 6px 0 0;
+  font-size: .8rem; line-height: 1.4; white-space: pre-wrap; overflow-wrap: anywhere; }
+.posnote { font-size: .9rem; border-left: 4px solid var(--line); padding-left: 8px; }
+.crop { position: relative; line-height: 0; margin-top: 8px; border: 1px solid var(--line); overflow: hidden; border-radius: 4px; }
+.crop img { width: 100%; height: auto; display: block; }
+.cropmark { position: absolute; border: 3px solid var(--mark); min-width: 8px; min-height: 8px; }
+footer { margin-top: 40px; }
+@media (max-width: 900px) {
+  .grid { grid-template-columns: 1fr; }
+  .shotcol { position: static; max-height: 70vh; }
+}
+@page { size: A4; margin: 14mm 12mm; }
+@media print {
+  body { font-size: 11pt; }
+  .wrap { max-width: none; padding: 0; }
+  a { color: var(--ink); text-decoration: none; }
+  h2, h3, .page-url { break-after: avoid; }
+  #probleme { break-before: page; }
+  .page + .page { break-before: page; }
+  .cards { grid-template-columns: 1fr 1fr; gap: 8px; }
+  .card { padding: 8px 10px; font-size: 9.5pt; }
+  .crop { max-height: 60mm; }
+  pre { font-size: 7.5pt; }
+  .grid { display: block; }
+  .shotcol { position: static; max-height: none; overflow: visible; border: 0; margin-bottom: 12px; }
+  .mark:target, .card:target { outline: 0; box-shadow: none; }
+  .mark, .cropmark, .num, .badge, .mark span, .cropmark span { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  .toc { display: none; }
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+<header>
+  <h1>Prüfbericht Webshop-Check</h1>
+  <p class="sub">{{.StartURL}}</p>
+  <dl class="meta">
+    <dt>Prüfung vom</dt><dd>{{.CreatedDe}}</dd>
+    <dt>Status</dt><dd>{{.StatusDe}}</dd>
+    <dt>Geprüfte Seiten</dt><dd>{{.PagesScanned}}</dd>
+    <dt>Prüfbereiche</dt><dd>{{.AreasDe}}</dd>
+    <dt>Bericht erstellt</dt><dd>{{.GeneratedDe}}</dd>
+  </dl>
+  <p class="note"><strong>Wichtiger Hinweis:</strong> {{.Disclaimer}}</p>
+</header>
+
+<main>
+<section aria-labelledby="ergebnis">
+  <h2 id="ergebnis">Ergebnis</h2>
+  <div class="score">
+    <div><b>{{.ScoreText}}</b>Anteil bestandener automatischer Prüfungen</div>
+    {{range .Counts}}<div><b>{{.N}}</b>{{.LabelDe}}</div>{{end}}
+  </div>
+  <p>Der Anteil ist keine Aussage über vollständige Konformität.</p>
+</section>
+
+<section aria-labelledby="regeln">
+  <h2 id="regeln">Prüfregeln</h2>
+  {{if .Rules}}
+  <table>
+    <thead><tr><th scope="col">Regel</th><th scope="col">Bezeichnung</th><th scope="col">Schweregrad</th><th scope="col">Ergebnis</th><th scope="col">Seiten</th></tr></thead>
+    <tbody>
+    {{range .Rules}}<tr><td>{{.ID}}</td><td>{{.NameDe}}</td><td><span class="badge {{.SevClass}}">{{.SeverityDe}}</span></td><td class="{{.StateClass}}">{{.StateDe}}</td><td>{{.Pages}}</td></tr>
+    {{end}}
+    </tbody>
+  </table>
+  {{else}}<p>Für die gewählten Bereiche wurden keine Regeln ausgeführt.</p>{{end}}
+</section>
+
+<section aria-labelledby="probleme">
+  <h2 id="probleme">Gefundene Probleme ({{.FindingCount}})</h2>
+  {{if .Sections}}
+  <p>Jede Fundstelle ist im Screenshot der Seite mit ihrer Nummer markiert. Ein Klick auf die Markierung springt zur Beschreibung und umgekehrt.</p>
+  <ol class="toc">{{range .Sections}}<li><a href="#p-{{.N}}">{{.URL}}</a> ({{len .Cards}})</li>{{end}}</ol>
+  {{if .CropsOmitted}}<p class="posnote">Wegen der vielen Fundstellen enthält der Bericht nicht für jede einen vergrößerten Ausschnitt.</p>{{end}}
+  {{else}}<p>Es wurden keine Probleme gefunden.</p>{{end}}
+
+  {{range .Sections}}
+  <section class="page" id="p-{{.N}}" aria-labelledby="p-{{.N}}-h">
+    <h3 id="p-{{.N}}-h">Seite {{.N}}</h3>
+    <p class="page-url">{{.URL}}</p>
+    <div class="grid">
+      {{if .HasShot}}
+      <div class="shotcol">
+        <div class="shotbox">
+          <img src="{{.ShotSrc}}" alt="{{.ShotAlt}}">
+          {{range .Marks}}<a class="mark" id="m-{{.N}}" href="#f-{{.N}}" style="{{.Style}}" aria-label="{{.Label}}"><span aria-hidden="true">{{.N}}</span></a>{{end}}
+        </div>
+        {{if .Truncated}}<p class="truncated">Die Seite ist länger als der Screenshot; er zeigt nur den oberen Teil.</p>{{end}}
+      </div>
+      {{else}}
+      <div class="shotcol"><p class="truncated">Für diese Seite gibt es keinen Screenshot.</p></div>
+      {{end}}
+      <ol class="cards" aria-label="Fundstellen auf Seite {{.N}}">
+        {{range .Cards}}
+        <li class="card" id="f-{{.N}}">
+          <div class="card-head">
+            {{if .HasMark}}<a class="num" href="#m-{{.N}}" aria-label="Fundstelle {{.N}} im Screenshot zeigen">{{.N}}</a>{{else}}<span class="num plain">{{.N}}</span>{{end}}
+            <span class="badge {{.SevClass}}">{{.SeverityDe}}</span>
+            <h4 style="margin:0;font-size:1rem">{{.RuleID}} {{.NameDe}}</h4>
+          </div>
+          {{if .Summary}}<p>{{.Summary}}</p>{{end}}
+          {{if .PosNote}}<p class="posnote">{{.PosNote}}</p>{{end}}
+          {{if .HasCrop}}<div class="crop"><img src="{{.CropSrc}}" alt="{{.CropAlt}}"><span class="cropmark" style="{{.CropMark.Style}}"><span aria-hidden="true">{{.N}}</span></span></div>{{end}}
+          <p class="loc">Stelle: <code>{{.Selector}}</code></p>
+          {{if .Snippet}}<pre><code>{{.Snippet}}</code></pre>{{end}}
+        </li>
+        {{end}}
+      </ol>
+    </div>
+  </section>
+  {{end}}
+</section>
+</main>
+
+<footer>
+  <p class="note">{{.Disclaimer}}</p>
+  <p class="loc">Erstellt mit Webshop-Check (Software-Praktikum Gruppe 9). Der Bericht enthält Screenshots öffentlich zugänglicher Seiten zum Zeitpunkt der Prüfung.</p>
+</footer>
+</div>
+</body>
+</html>
