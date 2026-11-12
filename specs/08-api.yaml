@@ -79,7 +79,7 @@ paths:
   /api/scans/{id}/report.pdf:
     get:
       summary: Download the finished report as PDF (F10, ADR-6)
-      description: Sent with `Content-Disposition: attachment`. Only for scans with status done or incomplete.
+      description: Sent with `Content-Disposition: attachment`. Printed from the HTML report when a browser is available, else a text PDF (ADR-7). Only for scans with status done or incomplete.
       parameters: [ { $ref: '#/components/parameters/ScanId' } ]
       responses:
         '200':
@@ -87,6 +87,21 @@ paths:
           content:
             application/pdf:
               schema: { type: string, format: binary }
+        '404': { $ref: '#/components/responses/Problem' }
+        '409': { $ref: '#/components/responses/Problem' }
+  /api/scans/{id}/report.html:
+    get:
+      summary: Visual report as HTML (F14, specs/11-report.md)
+      description: Shown inline; with `download=1` sent as attachment. Self-contained (images as data URIs, no script). Only for scans with status done or incomplete.
+      parameters:
+        - { $ref: '#/components/parameters/ScanId' }
+        - { name: download, in: query, required: false, schema: { type: string, enum: ['1'] } }
+      responses:
+        '200':
+          description: HTML report
+          content:
+            text/html:
+              schema: { type: string }
         '404': { $ref: '#/components/responses/Problem' }
         '409': { $ref: '#/components/responses/Problem' }
   /api/scans/{id}/report.json:
@@ -213,6 +228,23 @@ components:
               snippet: { type: string }
               sub: { type: string }
               summaryDe: { type: string }
+              position: { type: string, enum: [element, page, hidden, outside, not_found], description: 'RP-3; absent if the page was not captured' }
+              box:
+                type: object
+                nullable: true
+                description: element box in CSS px of the page screenshot (RP-3), only for position element/outside/hidden
+                properties: { x: { type: number }, y: { type: number }, width: { type: number }, height: { type: number } }
+        pages:
+          type: array
+          description: captured pages (RP-1, RP-2); the screenshots themselves are only in the HTML/PDF report
+          items:
+            type: object
+            properties:
+              url: { type: string }
+              width: { type: integer }
+              height: { type: integer }
+              viewportWidth: { type: integer }
+              truncated: { type: boolean }
     Suggestion:
       type: object
       properties:

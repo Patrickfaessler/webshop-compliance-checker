@@ -46,6 +46,25 @@ type Finding struct {
 	Evidence  string
 	Sub       string // sub-rule, e.g. "skipped-level"
 	SummaryDe string
+	// Position and Box locate the element on the page screenshot (specs/11-report.md RP-3).
+	// Position is "" when the page was not captured. Not persisted by the PostgreSQL store.
+	Position string
+	Box      *Box
+}
+
+// Box is a rectangle in CSS px of a page screenshot.
+type Box struct {
+	X, Y, Width, Height float64
+}
+
+// Shot is the screenshot of one page with findings (RP-1, RP-2). Kept in memory with the scan only (ADR-6, ADR-7).
+type Shot struct {
+	URL           string
+	Image         []byte // JPEG
+	Width         int    // CSS px
+	Height        int
+	ViewportWidth int
+	Truncated     bool // page was longer than the height limit
 }
 
 type Scan struct {
@@ -62,6 +81,7 @@ type Scan struct {
 	PreviousScanID string
 	RuleResults    []RuleResult
 	Findings       []Finding
+	Shots          []Shot // screenshots for the visual report (RP-1); memory only
 	CreatedAt      time.Time
 	FinishedAt     time.Time
 	ExpiresAt      time.Time

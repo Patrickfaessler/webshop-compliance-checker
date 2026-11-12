@@ -2,10 +2,13 @@
 package api
 
 import (
+	"bytes"
+	"context"
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
 	"errors"
+	"log"
 	"net"
 	"net/http"
 	"net/netip"
@@ -38,6 +41,13 @@ type Server struct {
 	RuleMeta map[string]rules.Meta
 	// TrustedProxies are reverse-proxy addresses whose X-Forwarded-For is believed (C-RL-PROXY). Empty = none.
 	TrustedProxies []netip.Prefix
+	// PDF prints the HTML report to PDF (ADR-7, RP-10). nil or an error = text PDF (RP-11).
+	PDF PDFPrinter
+}
+
+// PDFPrinter turns an HTML document into a PDF; *crawler.Crawler implements it.
+type PDFPrinter interface {
+	PrintPDF(ctx context.Context, htmlDoc []byte, timeout time.Duration) ([]byte, error)
 }
 
 func (s *Server) now() time.Time {
@@ -59,6 +69,7 @@ func (s *Server) Handler() http.Handler {
 	mux.HandleFunc("GET /api/scans/{id}/findings", s.getFindings)
 	mux.HandleFunc("GET /api/scans/{id}/report.json", s.reportJSON)
 	mux.HandleFunc("GET /api/scans/{id}/report.pdf", s.reportPDF)
+	mux.HandleFunc("GET /api/scans/{id}/report.html", s.reportHTML)
 	return s.cors(mux)
 }
 
@@ -334,12 +345,45 @@ func (s *Server) reportPDF(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
-	b, err := rep.PDF(report.PDFOptions{})
+	if s.PDF != nil { // RP-10: print the visual report
+		if doc, err := rep.HTML(); err == nil {
+			if b, err := s.PDF.PrintPDF(r.Context(), doc, 60*time.Second); err == nil && bytes.HasPrefix(b, []byte("%PDF")) {
+				download(w, "application/pdf", rep.FileName("pdf"), b)
+				return
+			} else if err != nil {
+				log.Printf("report: printing PDF failed, serving text PDF: %v", err)
+			}
+		}
+	}
+	b, err := rep.PDF(report.PDFOptions{}) // RP-11: text PDF without a browser
 	if err != nil {
 		problem(w, http.StatusInternalServerError, "Der Bericht konnte nicht erstellt werden.", 0)
 		return
 	}
 	download(w, "application/pdf", rep.FileName("pdf"), b)
+}
+
+// reportHTML shows the visual report (F14, RP-5); ?download=1 sends it as a file.
+func (s *Server) reportHTML(w http.ResponseWriter, r *http.Request) {
+	rep, ok := s.finishedReport(w, r)
+	if !ok {
+		return
+	}
+	b, err := rep.HTML()
+	if err != nil {
+		problem(w, http.StatusInternalServerError, "Der Bericht konnte nicht erstellt werden.", 0)
+		return
+	}
+	if r.URL.Query().Get("download") == "1" {
+		download(w, "text/html; charset=utf-8", rep.FileName("html"), b)
+		return
+	}
+	w.Header().Set("Content-Type", "text/html; charset=utf-8")
+	w.Header().Set("Cache-Control", "no-store")
+	w.Header().Set("X-Content-Type-Options", "nosniff")
+	// RP-5: the report needs no script and no external resources
+	w.Header().Set("Content-Security-Policy", "default-src 'none'; img-src data:; style-src 'unsafe-inline'; base-uri 'none'; form-action 'none'; frame-ancestors 'self'")
+	_, _ = w.Write(b)
 }
 
 func (s *Server) trustedProxy(ip string) bool {
