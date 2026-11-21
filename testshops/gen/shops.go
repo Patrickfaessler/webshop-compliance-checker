@@ -70,7 +70,7 @@ func shops() []Shop {
 				{"rooibos", "Rooibos Vanille", "Koffeinfrei, mit echter Vanille.", "7,20 €", "#9c5a2e"},
 			},
 			Defects:       Defects{OrderButton: "Zahlungspflichtig bestellen", WithdrawalFunction: true},
-			Expected:      map[string]string{"A1": "passed", "A2": "passed", "A3": "passed", "A4": "passed", "A5": "passed", "A6": "passed"},
+			Expected:      map[string]string{"A1": "passed", "A2": "passed", "A3": "passed", "A4": "passed", "A5": "passed", "A6": "passed", "R1": "passed", "R2": "passed", "R5": "passed"},
 			ExpectedScore: 100,
 		},
 		{
@@ -104,7 +104,7 @@ func shops() []Shop {
 				OrderButton:           "Bestellen",
 				NoWithdrawalPage:      true,
 			},
-			Expected:      map[string]string{"A1": "failed", "A2": "failed", "A3": "failed", "A4": "failed", "A5": "failed", "A6": "failed"},
+			Expected:      map[string]string{"A1": "failed", "A2": "failed", "A3": "failed", "A4": "failed", "A5": "failed", "A6": "failed", "R1": "failed", "R2": "failed", "R5": "failed"},
 			ExpectedScore: 0,
 		},
 		{
@@ -125,8 +125,8 @@ func shops() []Shop {
 				SkipH2ToH4OnCategory: true,
 				OrderButton:          "Jetzt kaufen",
 			},
-			Expected:      map[string]string{"A1": "failed", "A2": "failed", "A3": "passed", "A4": "failed", "A5": "passed", "A6": "passed"},
-			ExpectedScore: 54, // A5 passed (critical, weight 3): (3+1+3)/(9+1+3)
+			Expected:      map[string]string{"A1": "failed", "A2": "failed", "A3": "passed", "A4": "failed", "A5": "passed", "A6": "passed", "R1": "passed", "R2": "passed", "R5": "passed"},
+			ExpectedScore: 70, // passed A3+A5+A6+R1+R2+R5 = 3+3+1+3+2+2 = 14 of 20
 		},
 	}
 }

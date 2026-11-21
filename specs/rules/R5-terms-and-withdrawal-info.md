@@ -1,6 +1,6 @@
 # R5 Terms and withdrawal information present
 
-- **Status:** draft · **legal-checked:** no · **Area:** legal · **Severity:** warning
+- **Status:** implemented (2026-11-21, deterministic; AI fallback not built → not_assessable): unit tests, corpus 3 defect + 3 clean (recall 3/3, 0 false alarms), test shops. Code: `backend/internal/rules/r5`, `backend/internal/legal`, `backend/internal/lexicon`. · **legal-checked:** no · **Area:** legal · **Severity:** warning
 - **Basis:** Directive 2011/83/EU Art. 5, 6(1)(h), 9 and Annex I(A)
 - **applies_when:** shop sells to consumers (assumption stated in report; B2B-only shops out of scope)
 - **ai_fallback:** yes (locate withdrawal information inside long terms)

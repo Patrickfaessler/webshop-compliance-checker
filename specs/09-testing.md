@@ -22,7 +22,7 @@ GitHub Pages so anyone can scan them through the real app (no SSRF exception), a
 | Seifenmanufaktur Lavendel | `seifen/` | mixed: a few subtle defects, the rest clean |
 
 - Each shop has `expected.json`: the expected state per rule and the list of planted defects (page, rule, what). Legal
-  defects are planted already and documented for the R-rules that are not implemented yet.
+  defects are planted already; R1, R2 and R5 are checked (2026-11-21), the others are documented for later.
 - Every page says it is a fictional test shop, uses invented company data, carries `noindex`, sells nothing and loads no
   real third-party trackers.
 - Shops never link to each other, so a crawl stays inside one shop although all share one host.

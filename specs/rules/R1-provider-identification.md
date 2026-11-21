@@ -1,6 +1,6 @@
 # R1 Provider identification (legal notice)
 
-- **Status:** draft · **legal-checked:** no · **Area:** legal · **Severity:** critical
+- **Status:** implemented (2026-11-21, deterministic; AI fallback not built → not_assessable): unit tests, corpus 3 defect + 3 clean (recall 3/3, 0 false alarms), test shops. Code: `backend/internal/rules/r1`, `backend/internal/legal`, `backend/internal/lexicon`. · **legal-checked:** no · **Area:** legal · **Severity:** critical
 - **Basis:** Directive 2000/31/EC Art. 5; Directive 2011/83/EU Art. 6(1)(b)(c)
 - **applies_when:** every shop
 - **ai_fallback:** yes (field extraction when stages 1–3 are below threshold)

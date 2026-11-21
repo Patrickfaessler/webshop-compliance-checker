@@ -1,6 +1,6 @@
 # R2 Privacy notice present
 
-- **Status:** draft · **legal-checked:** no · **Area:** legal · **Severity:** warning
+- **Status:** implemented (2026-11-21, deterministic; AI fallback not built → not_assessable): unit tests, corpus 3 defect + 3 clean (recall 3/3, 0 false alarms), test shops. Code: `backend/internal/rules/r2`, `backend/internal/legal`, `backend/internal/lexicon`. · **legal-checked:** no · **Area:** legal · **Severity:** warning
 - **Basis:** Regulation (EU) 2016/679 Art. 13 (information to data subjects)
 - **applies_when:** every shop
 - **ai_fallback:** yes (section detection only)

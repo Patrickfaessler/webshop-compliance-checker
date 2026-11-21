@@ -28,6 +28,9 @@ import (
 	"compliancechecker/internal/rules/a4"
 	"compliancechecker/internal/rules/a5"
 	"compliancechecker/internal/rules/a6"
+	"compliancechecker/internal/rules/r1"
+	"compliancechecker/internal/rules/r2"
+	"compliancechecker/internal/rules/r5"
 	"compliancechecker/internal/scan"
 	"compliancechecker/internal/ssrf"
 	"compliancechecker/internal/worker"
@@ -130,7 +133,7 @@ func main() {
 		source = worker.FetchSource{Client: fetcher}
 	}
 
-	allRules := []rules.Rule{a1.New(), a2.New(), a3.New(), a4.New(), a5.New(), a6.New()}
+	allRules := []rules.Rule{a1.New(), a2.New(), a3.New(), a4.New(), a5.New(), a6.New(), r1.New(), r2.New(), r5.New()}
 	ruleMeta := map[string]rules.Meta{}
 	for _, r := range allRules {
 		ruleMeta[r.Meta().ID] = r.Meta()

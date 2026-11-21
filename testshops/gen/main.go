@@ -554,7 +554,7 @@ func expected(s Shop, pages []page) Expected {
 	return Expected{
 		Shop: s.Name, StartPath: s.Slug + "/", Kind: s.Kind, Expected: s.Expected, ExpectedScore: s.ExpectedScore,
 		Pages: files, Planted: pl,
-		Note: "expected/expectedScore cover the implemented rules (A1-A6). R-rule defects are planted and listed for later; the scanner does not check them yet.",
+		Note: "expected/expectedScore cover the implemented rules (A1-A6, R1, R2, R5). Other R-rule defects are planted and listed for later.",
 	}
 }
 
@@ -581,12 +581,12 @@ func overview(all []Shop) string {
 <p>Drei <strong>fiktive</strong> Webshops mit absichtlich eingebauten Fehlern, zum Testen des Webshop-Checks (Software-Praktikum WS 2026/27, Gruppe 9). Es gibt keine echten Produkte, nichts kann bestellt werden, alle Firmendaten sind erfunden.</p>
 <p>Zum Testen die Adresse eines Shops kopieren und im Webshop-Check prüfen lassen. Die erwarteten Ergebnisse stehen in der Tabelle und in der Datei <code>expected.json</code> jedes Shops.</p>
 <table>
-  <thead><tr><th scope="col">Shop</th><th scope="col">Art</th><th scope="col">Erwartet (A1, A2, A3, A4, A6)</th><th scope="col">Erwarteter Score</th></tr></thead>
+  <thead><tr><th scope="col">Shop</th><th scope="col">Art</th><th scope="col">Erwartet (A1–A6, R1, R2, R5)</th><th scope="col">Erwarteter Score</th></tr></thead>
   <tbody>
 `)
 	for _, s := range all {
 		var parts []string
-		for _, r := range []string{"A1", "A2", "A3", "A4", "A6"} {
+		for _, r := range []string{"A1", "A2", "A3", "A4", "A5", "A6", "R1", "R2", "R5"} {
 			state := "bestanden"
 			if s.Expected[r] == "failed" {
 				state = "nicht bestanden"
