@@ -58,8 +58,13 @@ func priority(u string) int {
 // If ctx ends, the pages collected so far are returned with Incomplete set.
 func (c *Crawler) Crawl(ctx context.Context, startURL string, opt Options, robotsClient Getter, progress func(done, total int)) (Result, error) {
 	if opt.MaxPages <= 0 {
+		kb := opt.Keyboard
 		opt = DefaultOptions()
+		opt.Keyboard = kb
 	}
+	// A5: one sampler per crawl decides which pages get the keyboard probe (A5-5, A5-6)
+	sampler := newKeyboardSampler(opt.Keyboard)
+	plan := &probePlan{decide: sampler.decide, presses: opt.Keyboard.Presses()}
 	su, err := url.Parse(startURL)
 	if err != nil {
 		return Result{}, err
@@ -118,7 +123,7 @@ func (c *Crawler) Crawl(ctx context.Context, startURL string, opt Options, robot
 		}
 		last = time.Now()
 
-		r, err := sess.Render(ctx, it.url, opt.PageTimeout)
+		r, err := sess.run(ctx, opt.PageTimeout, it.url, "", plan)
 		if err != nil {
 			if ctx.Err() != nil {
 				res.Incomplete = true
