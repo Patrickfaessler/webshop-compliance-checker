@@ -196,6 +196,17 @@ func (r Report) PDF(opt PDFOptions) ([]byte, error) {
 		if f.Selector != "" {
 			pdf.MultiCell(width, 5, tr("Stelle: "+f.Selector), "", "L", false)
 		}
+		if f.Fix != nil {
+			pdf.MultiCell(width, 5, tr("Vorschlag: "+f.Fix.TextDe), "", "L", false)
+			if f.Fix.Code != "" {
+				pdf.SetFont("Courier", "", 8)
+				pdf.MultiCell(width, 4, tr(f.Fix.Code), "", "L", false)
+				pdf.SetFont("Helvetica", "", 10)
+			}
+			if f.Fix.NoteDe != "" {
+				pdf.MultiCell(width, 5, tr("Hinweis: "+f.Fix.NoteDe), "", "L", false)
+			}
+		}
 		if f.Snippet != "" {
 			pdf.SetFont("Courier", "", 8)
 			pdf.MultiCell(width, 4, tr(truncate(f.Snippet, 300)), "", "L", false)

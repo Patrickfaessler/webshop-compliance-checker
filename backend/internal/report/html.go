@@ -76,6 +76,7 @@ type cardView struct {
 	CropSrc                                  template.URL
 	CropMark                                 markView
 	CropAlt                                  string
+	Fix                                      *Fix
 }
 
 // HTML renders the visual report (F14). The result contains no script and no external resources (RP-5).
@@ -176,7 +177,7 @@ func (r Report) sections(names map[string]string) ([]sectionView, bool) {
 			n++
 			c := cardView{
 				N: n, RuleID: f.RuleID, NameDe: names[f.RuleID], SeverityDe: severityDe(f.Severity), SevClass: sevClass(f.Severity),
-				Summary: f.SummaryDe, URL: f.URL, Selector: f.Selector, Snippet: truncate(f.Snippet, 400),
+				Summary: f.SummaryDe, URL: f.URL, Selector: f.Selector, Snippet: truncate(f.Snippet, 400), Fix: f.Fix,
 				PosNote: positionNoteDe(f.Position, sec.HasShot),
 			}
 			if sec.HasShot && f.Position == "element" && f.Box != nil {

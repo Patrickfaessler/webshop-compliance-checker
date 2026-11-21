@@ -62,6 +62,9 @@ th { background: var(--soft); }
   font-weight: 700; border-radius: 4px; padding: 2px 6px; text-decoration: none; }
 .num.plain { background: var(--ink); }
 .card p { margin: 6px 0; }
+.fix { border-left: 3px solid var(--focus); padding: 4px 0 4px 10px; margin-top: 8px; }
+.fix h5 { margin: 0; font-size: 0.95rem; }
+.fix pre { white-space: pre-wrap; overflow-wrap: anywhere; }
 .loc { font-size: .9rem; color: var(--muted); overflow-wrap: anywhere; }
 pre { background: var(--soft); border: 1px solid var(--line); border-radius: 4px; padding: 8px; margin: 6px 0 0;
   font-size: .8rem; line-height: 1.4; white-space: pre-wrap; overflow-wrap: anywhere; }
@@ -170,6 +173,12 @@ footer { margin-top: 40px; }
           {{if .HasCrop}}<div class="crop"><img src="{{.CropSrc}}" alt="{{.CropAlt}}"><span class="cropmark" style="{{.CropMark.Style}}"><span aria-hidden="true">{{.N}}</span></span></div>{{end}}
           <p class="loc">Stelle: <code>{{.Selector}}</code></p>
           {{if .Snippet}}<pre><code>{{.Snippet}}</code></pre>{{end}}
+          {{with .Fix}}<div class="fix">
+            <h5>So können Sie es beheben <span class="origin">(Vorlage)</span></h5>
+            <p>{{.TextDe}}</p>
+            {{if .Code}}<pre><code>{{.Code}}</code></pre>{{end}}
+            {{if .NoteDe}}<p class="note">{{.NoteDe}}</p>{{end}}
+          </div>{{end}}
         </li>
         {{end}}
       </ol>
