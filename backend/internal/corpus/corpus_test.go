@@ -56,7 +56,9 @@ func TestCorpus(t *testing.T) {
 
 	var sess *crawler.Session
 	if _, err := crawler.FindBrowser(""); err == nil {
-		ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
+		// One session serves every corpus case (~1.7 s each), so the budget must cover all of them,
+		// with headroom for parallel browser-test packages in `go test ./...`.
+		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
 		defer cancel()
 		if s, err := (&crawler.Crawler{}).Open(ctx); err == nil {
 			sess = s
