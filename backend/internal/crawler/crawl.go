@@ -64,7 +64,6 @@ func (c *Crawler) Crawl(ctx context.Context, startURL string, opt Options, robot
 	}
 	// A5: one sampler per crawl decides which pages get the keyboard probe (A5-5, A5-6)
 	sampler := newKeyboardSampler(opt.Keyboard)
-	plan := &probePlan{decide: sampler.decide, presses: opt.Keyboard.Presses()}
 	su, err := url.Parse(startURL)
 	if err != nil {
 		return Result{}, err
@@ -76,6 +75,11 @@ func (c *Crawler) Crawl(ctx context.Context, startURL string, opt Options, robot
 		h, s := strings.ToLower(host), strings.ToLower(su.Hostname())
 		return h == s || h == "www."+s || "www."+h == s
 	}
+	plan := &probePlan{decide: sampler.decide, presses: opt.Keyboard.Presses(),
+		accept: func(finalURL string, status int) bool { // same check as below: dropped pages are not probed
+			fu, err := url.Parse(finalURL)
+			return err == nil && same(fu.Hostname()) && status < 400
+		}}
 
 	var robots *Robots
 	if robotsClient != nil {

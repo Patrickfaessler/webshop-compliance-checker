@@ -222,7 +222,7 @@ func (s *Session) run(ctx context.Context, timeout time.Duration, target, displa
 	// A5: the keyboard probe runs last, so it cannot change what the other rules see, and with its own
 	// time budget, so a slow probe never costs the page (A5-9).
 	var kb *rules.KeyboardReport
-	if plan != nil && plan.decide != nil {
+	if plan != nil && plan.decide != nil && (plan.accept == nil || plan.accept(finalURL, st)) {
 		if typ, ok := plan.decide(pageURL, readSignals(rctx)); ok {
 			pctx, pcancel := context.WithTimeout(tctx, probeTimeout)
 			pstop := context.AfterFunc(ctx, pcancel)

@@ -33,7 +33,7 @@ func (Rule) Check(_ context.Context, in rules.Input) (rules.Result, error) {
 		probed++
 		if !k.Completed && len(k.Traps) == 0 {
 			capped++
-			presses = max(presses, k.MaxPresses)
+			presses = max(presses, k.Presses) // = the limit, or fewer when the probe ran out of time (A5-9)
 		}
 		for _, g := range []struct {
 			sub   string

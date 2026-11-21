@@ -79,3 +79,15 @@ func TestSubRules(t *testing.T) {
 		}
 	}
 }
+
+// Spec: A5-9 — a probe that ran out of time names the presses actually made, not the limit.
+func TestTimeoutNoteNamesPressesMade(t *testing.T) {
+	part := &rules.KeyboardReport{MaxPresses: 1000, Presses: 120}
+	r, err := New().Check(context.Background(), rules.Input{Pages: []rules.Page{{URL: "https://s.at/", Keyboard: part}}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if want := "Erreichbarkeit nur für die ersten 120 Bedienelemente geprüft (Limit erreicht auf 1 von 1 geprüften Seiten)."; r.NoteDe != want {
+		t.Errorf("note = %q, want %q", r.NoteDe, want)
+	}
+}

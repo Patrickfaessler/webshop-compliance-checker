@@ -106,6 +106,24 @@ void main() {
       await tester.pumpWidget(const SizedBox());
     });
 
+    // Spec: F1, A5-8 — without "Barrierefreiheit" the Tab limit is not used and does not block a legal-only scan.
+    testWidgets('invalid Tab limit does not block a legal-only scan',
+        (tester) async {
+      final api = FakeApi(statuses: [statusOf('new123', 'queued')]);
+      await openApp(tester, api);
+      await tester.enterText(find.byType(TextField).first, 'mein-shop.at');
+      await tester.enterText(
+          find.widgetWithText(TextField, 'Tab-Drücke pro Seite'), '40');
+      await tester.tap(find.text('Barrierefreiheit (WCAG 2.1 AA)'));
+      await tester.tap(find.text('Jetzt prüfen'));
+      await tester.pump();
+      await tester.pump();
+      expect(
+          find.text('Bitte eine Zahl von 50 bis 1000 eingeben.'), findsNothing);
+      expect(api.createdAreas, ['legal']);
+      await tester.pumpWidget(const SizedBox());
+    });
+
     // Spec: F1 / C-SSRF — a server problem title is shown to the user.
     testWidgets('API problem message is displayed', (tester) async {
       final api = FakeApi(

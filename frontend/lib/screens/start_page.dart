@@ -48,7 +48,8 @@ class _StartPageState extends State<StartPage> {
       setState(() => _error = 'Bitte mindestens einen Prüfbereich auswählen.');
       return;
     }
-    final presses = int.tryParse(_presses.text.trim());
+    // the Tab limit only matters with the accessibility area (A5-8)
+    final presses = _accessibility ? int.tryParse(_presses.text.trim()) : 200;
     if (presses == null || presses < 50 || presses > 1000) {
       setState(() => _error = 'Bitte eine Zahl von 50 bis 1000 eingeben.');
       return;

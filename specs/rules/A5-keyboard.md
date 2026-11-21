@@ -41,7 +41,9 @@ submitted, `05-crawler.md`).
 3. Violations (sub-rules):
    - `no-focus-style`: the style of the focused element **and** of its parent is equal to the unfocused style
      (so a `:focus-within` frame on a wrapper counts as visible).
-   - `keyboard-trap`: focus stays on one element for ≥ 3 presses, or an element is focused a second time before the
+   - `keyboard-trap`: focus stays on one element for ≥ 3 presses (≥ 15 for elements with inner Tab stops the probe
+     cannot see: `input` of type date, time, datetime-local, month, week, and custom elements with a closed shadow
+     root), or an element is focused a second time before the
      focus left the document. The probe stops there.
    - `unreachable`: a candidate that was never focused, judged **only when the loop completed** (focus left the
      document after the last element before the limit).
@@ -50,6 +52,10 @@ submitted, `05-crawler.md`).
      without `tabindex`.
 4. At most **20 findings per sub-rule and page**.
 5. Menus and modals that need hover or click to open are tested only in their initial state.
+6. A modal dialog that is open on load (visible `[aria-modal="true"]` or modal `<dialog open>`, e.g. a cookie
+   consent) may hold the focus (WCAG 2.1.2 allows this while it has a way out). The candidates are then only the
+   elements inside the dialog; the page behind it is not judged for `unreachable`.
+7. Pages that come back with an error status (≥ 400) or end on another host are not probed and take no sample slot.
 
 ## Result mapping
 
@@ -77,4 +83,6 @@ Nicht jeder kann eine Maus benutzen. Alle Bedienelemente müssen mit der Tab-Tas
 - A5-6: mode "alle Seiten" probes every crawled page.
 - A5-7: limit reached on a page, no finding → `passed` with the note above; `unreachable` is not judged there.
 - A5-8: the Tab limit from the form is used; values outside 50–1000 are rejected with a German message.
-- A5-9: a probe error or timeout keeps the page (HTML, axe result) without a keyboard result.
+- A5-9: a probe error keeps the page (HTML, axe result) without a keyboard result. When the probe's time
+  (30 s) runs out during the Tab loop, the presses so far count like a reached limit (A5-7, the note names the
+  presses actually made).

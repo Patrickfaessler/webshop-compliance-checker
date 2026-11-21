@@ -70,6 +70,14 @@ func TestProbeKeyboard(t *testing.T) {
 		{name: "focus-within", body: `<style>#q:focus{outline:none} .w:focus-within{outline:2px solid #000}</style><a id="l" href="/x">Link</a> <span class="w"><input id="q" aria-label="Suche"></span>`},
 		{name: "empty", body: `<p>Nur Text</p>`},
 		// a radio group is one Tab stop; the other radios are reached with the arrow keys (WCAG 2.1.1)
+		// inner Tab stops the probe cannot see are not a trap (Logic 3)
+		{name: "date-time", body: `<a id="l" href="/x">Link</a> <input type="date" id="d" aria-label="Geburtsdatum"> <input type="time" id="tm" aria-label="Uhrzeit"> <button id="b">Weiter</button>`},
+		{name: "closed-shadow", body: `<a id="l" href="/x">Link</a> <x-pay id="c"></x-pay> <button id="b">Weiter</button>
+<script>customElements.define('x-pay', class extends HTMLElement { constructor() { super(); const r = this.attachShadow({mode: 'closed'}); r.innerHTML = '<button>A</button><button>B</button><button>C</button>'; } });</script>`},
+		// a consent modal open on load may hold the focus; the page behind it is not unreachable (Logic 6)
+		{name: "consent-modal", body: `<a id="l" href="/x">Start</a> <a href="/y">Shop</a>
+<div id="dlg" role="dialog" aria-modal="true" aria-label="Cookies"><button id="ok">Akzeptieren</button> <button id="no">Ablehnen</button></div>
+<script>const d=document.getElementById('dlg'); document.addEventListener('focusin', e => { if (!d.contains(e.target)) document.getElementById('ok').focus(); }); document.getElementById('ok').focus();</script>`},
 		{name: "radio-group", body: `<form><input type="radio" id="r1" name="pay" value="a" aria-label="Karte"> <input type="radio" id="r2" name="pay" value="b" aria-label="Rechnung"> <button id="b">Weiter</button></form>`},
 	}
 	for _, tt := range tests {
@@ -139,6 +147,70 @@ func TestRenderKeepsPageWhenProbeTimesOut(t *testing.T) {
 	}
 	if p.Keyboard != nil || p.Axe == nil || !strings.Contains(p.HTML, "Link") {
 		t.Errorf("keyboard=%v axe=%v html=%d bytes", p.Keyboard, p.Axe != nil, len(p.HTML))
+	}
+}
+
+// Spec: A5-9, A5-7 — when the probe's time runs out during the Tab loop, the presses so far count as a reached limit.
+func TestProbeKeyboardTimeoutKeepsPartialResult(t *testing.T) {
+	s := openOrSkip(t, &Crawler{Validate: allowLoopback})
+	old := probeTimeout
+	probeTimeout = 3 * time.Second
+	defer func() { probeTimeout = old }()
+	var b strings.Builder
+	for i := range 1200 {
+		fmt.Fprintf(&b, `<a href="/p%d">Produkt %d</a> `, i, i)
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
+	defer cancel()
+	p, err := s.analyze(ctx, "https://shop.example/", kbPage(b.String()), 50*time.Second, KeyboardOptions{MaxPresses: 1000})
+	if err != nil {
+		t.Fatal(err)
+	}
+	k := p.Keyboard
+	if k == nil {
+		t.Fatal("no keyboard report after the probe ran out of time")
+	}
+	if k.Completed || k.Presses == 0 || k.Presses >= 1000 || len(k.Unreachable) != 0 {
+		t.Errorf("completed=%v presses=%d unreachable=%d", k.Completed, k.Presses, len(k.Unreachable))
+	}
+}
+
+// Spec: A5 Logic 7, A5-5 — an error page takes no sample slot.
+func TestCrawlKeyboardSkipsErrorPages(t *testing.T) {
+	if _, err := FindBrowser(""); err != nil {
+		t.Skip("no browser installed")
+	}
+	mux := http.NewServeMux()
+	product := kbPage(`<script type="application/ld+json">{"@type":"Product","name":"x"}</script><a href="/">Start</a>`)
+	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "text/html")
+		switch r.URL.Path {
+		case "/":
+			_, _ = w.Write([]byte(kbPage(`<a href="/produkt-a">A</a> <a href="/produkt-b">B</a>`)))
+		case "/produkt-a":
+			w.WriteHeader(http.StatusNotFound)
+			_, _ = w.Write([]byte(product))
+		default:
+			_, _ = w.Write([]byte(product))
+		}
+	})
+	srv := httptest.NewServer(mux)
+	defer srv.Close()
+	ctx, cancel := context.WithTimeout(context.Background(), 120*time.Second)
+	defer cancel()
+	opt := Options{MaxPages: 10, MaxDepth: 2, PageTimeout: 20 * time.Second, MinInterval: time.Millisecond}
+	res, err := (&Crawler{Validate: allowLoopback}).Crawl(ctx, srv.URL+"/", opt, nil, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	probed := map[string]string{}
+	for _, p := range res.Pages {
+		if p.Keyboard != nil {
+			probed[strings.TrimPrefix(p.URL, srv.URL)] = p.Keyboard.PageType
+		}
+	}
+	if want := map[string]string{"/": "start", "/produkt-b": "product"}; fmt.Sprint(probed) != fmt.Sprint(want) {
+		t.Errorf("probed %v, want %v", probed, want)
 	}
 }
 

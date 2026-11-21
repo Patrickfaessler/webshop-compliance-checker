@@ -27,7 +27,16 @@ const (
 )
 
 // probePlan tells run whether and how to probe a page. nil = never probe.
+// innerTrapPresses is the trap threshold for elements whose inner Tab stops the probe cannot see (A5 Logic 3).
+const innerTrapPresses = 15
+
+// probeReserve is the time left at the end of the probe budget for the last calls; the loop stops before it (A5-9).
+const probeReserve = time.Second
+
 type probePlan struct {
+	// accept says whether the page is kept at all (status, final host); rejected pages are not probed
+	// and take no sample slot (A5 Logic 7). nil accepts every page.
+	accept  func(finalURL string, status int) bool
 	decide  func(pageURL string, sig pageSignals) (PageType, bool)
 	presses int
 }
@@ -42,15 +51,14 @@ func (s *Session) analyze(ctx context.Context, pageURL, htmlSrc string, timeout 
 
 // keyboardStep is what the page reports after one Tab press.
 type keyboardStep struct {
-	Left         bool   `json:"left"`  // focus is on body / outside the document
-	ID           int    `json:"id"`    // stable number of the focused element
-	First        bool   `json:"first"` // this is the first element focused in this probe
-	Seen         bool   `json:"seen"`  // focused before
-	Frame        bool   `json:"frame"` // iframe or shadow host without own focus info: repeats do not count
-	Selector     string `json:"sel"`
-	Snippet      string `json:"snippet"`
-	Candidate    bool   `json:"candidate"`
-	StyleChanged bool   `json:"styleChanged"`
+	Left         bool `json:"left"`  // focus is on body / outside the document
+	ID           int  `json:"id"`    // stable number of the focused element
+	First        bool `json:"first"` // this is the first element focused in this probe
+	Seen         bool `json:"seen"`  // focused before
+	Frame        bool `json:"frame"` // iframe or shadow host without own focus info: repeats do not count
+	Inner        bool `json:"inner"` // has inner Tab stops the probe cannot see (date/time input, closed shadow root)
+	Candidate    bool `json:"candidate"`
+	StyleChanged bool `json:"styleChanged"`
 }
 
 type keyboardPrep struct {
@@ -89,14 +97,33 @@ func (s *Session) probeKeyboard(ctx context.Context, maxPresses int) (*rules.Key
 		}
 	}
 
+	// When the probe's time runs out during the loop, the presses so far count like a reached limit (A5-9).
+	deadline, hasDeadline := ctx.Deadline()
+	outOfTime := func(err error) bool { return ctx.Err() != nil && rep.Presses > 0 && err != nil }
+	current := func() rules.KeyboardNode {
+		n, err := chromedp.Run(ctx, chromedp.Evaluate[rules.KeyboardNode]("window.__a5.node(window.__a5.current())"))
+		if err != nil {
+			return rules.KeyboardNode{}
+		}
+		return n
+	}
 	lastID, repeats := -1, 0
 	for rep.Presses < maxPresses {
+		if hasDeadline && time.Until(deadline) < probeReserve {
+			return rep, nil
+		}
 		if err := pressTab(ctx); err != nil {
+			if outOfTime(err) {
+				return rep, nil
+			}
 			return nil, err
 		}
 		rep.Presses++
 		st, err := chromedp.Run(ctx, chromedp.Evaluate[keyboardStep]("window.__a5.step()"))
 		if err != nil {
+			if outOfTime(err) {
+				return rep, nil
+			}
 			return nil, fmt.Errorf("crawler: reading focus: %w", err)
 		}
 		if st.Left {
@@ -107,8 +134,12 @@ func (s *Session) probeKeyboard(ctx context.Context, maxPresses int) (*rules.Key
 			continue
 		}
 		if st.ID == lastID { // focus did not move
-			if repeats++; repeats >= 3 {
-				rep.Traps = append(rep.Traps, rules.KeyboardNode{Selector: st.Selector, Snippet: st.Snippet})
+			limit := 3
+			if st.Inner {
+				limit = innerTrapPresses
+			}
+			if repeats++; repeats >= limit {
+				rep.Traps = append(rep.Traps, current())
 				break
 			}
 			continue
@@ -118,21 +149,27 @@ func (s *Session) probeKeyboard(ctx context.Context, maxPresses int) (*rules.Key
 			if st.First {
 				rep.Completed = true // focus wrapped around to the first element
 			} else {
-				rep.Traps = append(rep.Traps, rules.KeyboardNode{Selector: st.Selector, Snippet: st.Snippet})
+				rep.Traps = append(rep.Traps, current())
 			}
 			break
 		}
 		if st.Candidate && !st.StyleChanged && len(rep.NoFocusStyle) < maxKeyboardFindings {
 			// a CSS transition may not have finished yet: look once more
 			if err := chromedp.Do(ctx, chromedp.Sleep(styleRecheckDelay)); err != nil {
+				if outOfTime(err) {
+					return rep, nil
+				}
 				return nil, err
 			}
 			changed, err := chromedp.Run(ctx, chromedp.Evaluate[bool]("window.__a5.styleChanged()"))
 			if err != nil {
+				if outOfTime(err) {
+					return rep, nil
+				}
 				return nil, err
 			}
 			if !changed {
-				rep.NoFocusStyle = append(rep.NoFocusStyle, rules.KeyboardNode{Selector: st.Selector, Snippet: st.Snippet})
+				rep.NoFocusStyle = append(rep.NoFocusStyle, current())
 			}
 		}
 	}
@@ -216,8 +253,12 @@ const keyboardPrepareScript = `(() => {
     return [outline, c.boxShadow, border, c.backgroundColor, c.textDecorationLine].join("|");
   };
   if (document.activeElement && document.activeElement.blur) document.activeElement.blur();
+  // a modal dialog open on load (e.g. cookie consent) may hold the focus: judge only inside it (Logic 6)
+  let modal = null;
+  try { modal = document.querySelector("dialog:modal"); } catch (e) {}
+  if (!modal) modal = Array.from(document.querySelectorAll('[aria-modal="true"]')).find(el => !hidden(el)) || null;
   const cands = Array.from(document.querySelectorAll(SEL)).filter(el =>
-    el.getAttribute("tabindex") !== "-1" && !el.matches(":disabled") && !hidden(el));
+    el.getAttribute("tabindex") !== "-1" && !el.matches(":disabled") && !hidden(el) && (!modal || modal.contains(el)));
   const base = new Map(cands.map(el => [el, [style(el), style(el.parentElement)]]));
   const nf = [], ptr = [];
   document.querySelectorAll("div,span").forEach(el => {
@@ -232,9 +273,11 @@ const keyboardPrepareScript = `(() => {
     while (a && a.shadowRoot && a.shadowRoot.activeElement) a = a.shadowRoot.activeElement; return a; };
   const start = document.createElement("div"); start.tabIndex = -1; start.id = "__a5start";
   start.style.cssText = "position:absolute;top:0;left:0;width:1px;height:1px;overflow:hidden";
-  document.body && document.body.prepend(start); start.focus({preventScroll: true}); window.scrollTo(0, 0);
+  const home = modal || document.body; // inside a modal, start at its top so its own focus handling keeps us there
+  home && home.prepend(start); start.focus({preventScroll: true}); window.scrollTo(0, 0);
+  const INNER = ["date", "time", "datetime-local", "month", "week"];
   window.__a5 = {
-    ptr, node,
+    ptr, node, current: () => current,
     step() {
       if (start.isConnected) start.remove();
       const el = deep();
@@ -245,8 +288,9 @@ const keyboardPrepareScript = `(() => {
       if (firstId < 0) firstId = id;
       current = el;
       const frame = el.localName === "iframe" || (!!el.shadowRoot && !el.shadowRoot.activeElement);
+      const inner = (el.localName === "input" && INNER.includes(el.type)) || (el.localName.includes("-") && el.shadowRoot === null);
       const b = base.get(el);
-      return {left: false, id, first: id === firstId, seen, frame, sel: selOf(el), snippet: snippet(el),
+      return {left: false, id, first: id === firstId, seen, frame, inner,
         candidate: !!b, styleChanged: b ? (style(el) !== b[0] || style(el.parentElement) !== b[1]) : true};
     },
     styleChanged() { const b = base.get(current); return !b || style(current) !== b[0] || style(current.parentElement) !== b[1]; },
