@@ -147,6 +147,8 @@ components:
           items: { type: string, enum: [accessibility, legal] }
           default: [accessibility, legal]
         previousScanId: { type: string, description: 'F9 re-scan comparison' }
+        keyboardAllPages: { type: boolean, default: false, description: 'A5 mode "alle Seiten" (10 min limit, C-1)' }
+        keyboardMaxPresses: { type: integer, minimum: 50, maximum: 1000, default: 200, description: 'A5 Tab limit per page (A5-8)' }
     ScanStatus:
       type: object
       properties:
@@ -159,6 +161,9 @@ components:
         expiresAt: { type: string, format: date-time }
         errorDe: { type: string, description: 'German reason when status = failed' }
         disclaimerDe: { type: string }
+        keyboardAllPages: { type: boolean }
+        keyboardMaxPresses: { type: integer }
+        keyboardPagesProbed: { type: integer, description: 'pages that got a keyboard result (A5)' }
     RuleResult:
       type: object
       properties:
@@ -166,6 +171,7 @@ components:
         state: { type: string, enum: [passed, failed, not_applicable, not_assessable] }
         decidedBy: { type: string, enum: [structural, dictionary, pattern, ai] }
         pagesAffected: { type: integer }
+        noteDe: { type: string, description: 'German note on the result, e.g. A5 limit reached (A5-7)' }
         previousState: { type: string, nullable: true }
     Finding:
       type: object

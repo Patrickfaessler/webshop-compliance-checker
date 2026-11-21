@@ -14,6 +14,7 @@ Read "Playwright" in this file as "headless Chromium via chromedp".
 | Duplicates | a directory and its index file (`/x/`, `/x/index.html`, `index.htm`, `index.php`) are one page |
 | Page load timeout | 15 s load + wait for network idle (max 2 s) |
 | Total scan time | 5 min, then report is marked `incomplete` |
+| Total scan time, mode „alle Seiten“ (A5) | 10 min (the user chose the keyboard probe on every page, `rules/A5-keyboard.md`) |
 | Parallel tabs per scan | 4 |
 | Politeness | obey `robots.txt` (a disallowed page is skipped and listed), max 2 requests/s per host, own User-Agent with contact URL |
 

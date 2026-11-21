@@ -6,7 +6,7 @@ Status column: draft / reviewed / implemented / verified (see `README.md`).
 
 | ID | Requirement | Prio | Acceptance criterion | Status |
 | --- | --- | --- | --- | --- |
-| F1 | Enter a shop URL, choose check areas (accessibility, legal), start a scan. No login. | Must | Invalid or internal URLs are rejected with a German message (C-SSRF); a valid request returns a scan ID and a result link | draft |
+| F1 | Enter a shop URL, choose check areas (accessibility, legal), start a scan. No login. Options for A5: keyboard probe on all pages (10 min), Tab limit 50–1000 (A5-8). | Must | Invalid or internal URLs are rejected with a German message (C-SSRF); a valid request returns a scan ID and a result link | draft |
 | F2 | Crawler visits up to 50 pages incl. product, cart, checkout (checkout only in test shop) | Must | Limits from `05-crawler.md` hold; visited pages are listed in the report | draft |
 | F3 | Automatic WCAG checks A1–A6 | Must | Corpus: recall ≥ 90 %, false alarms ≤ 10 % per rule | draft |
 | F4 | Provider identification check (R1) | Must | Each missing mandatory field named individually | draft |

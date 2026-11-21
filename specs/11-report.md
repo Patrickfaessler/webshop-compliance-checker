@@ -50,7 +50,10 @@ printed from the same HTML (ADR-7). It builds on the JSON report (`internal/repo
   **no JavaScript, no external requests**. It works offline and can be downloaded and passed on.
 - **RP-6 Content.** Header: shop address, date (Vienna time), status, pages scanned, score with the S-3 wording
   ("Anteil bestandener automatischer Prüfungen", never "konform"), counts per state, the disclaimer (N3) at the top
-  and at the end. Rule table (name, severity, state, pages affected). Then one section per affected page.
+  and at the end. Rule table (name, severity, state, pages affected). Then one section per affected page. When the accessibility area ran, the header also has the A5 line
+  `Tastaturprüfung: Stichprobe ({n} Seiten), bis zu {N} Tab-Drücke pro Seite` or
+  `Tastaturprüfung: alle Seiten ({n} Seiten), bis zu {N} Tab-Drücke pro Seite`, followed by the probed page URLs.
+  A rule result's note (`noteDe`, e.g. A5-7) is shown under the rule name in the rule table.
 - **RP-7 Page section.** Left: screenshot with numbered frames (positions in % of the image, so it scales). Right:
   finding cards with number, severity (text, not colour only), rule ID and German name, explanation (`summaryDe`),
   location (URL, selector, snippet), position note (RP-3), and for `element` a cropped detail of the area.
