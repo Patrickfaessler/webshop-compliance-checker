@@ -46,7 +46,7 @@ func Hits(l List, text string) int {
 	seen := map[string]bool{}
 	add := func(ws []string) {
 		for _, w := range ws {
-			if !seen[w] && containsWord(t, w) {
+			if !seen[w] && ContainsWord(t, w) {
 				seen[w] = true
 			}
 		}
@@ -63,8 +63,8 @@ func Hits(l List, text string) int {
 	return len(seen)
 }
 
-// containsWord reports whether w occurs in t at a word start (so "agb" does not match inside "tagblatt").
-func containsWord(t, w string) bool {
+// ContainsWord reports whether w occurs in t at a word start (so "agb" does not match inside "tagblatt").
+func ContainsWord(t, w string) bool {
 	for i := 0; ; {
 		j := strings.Index(t[i:], w)
 		if j < 0 {
