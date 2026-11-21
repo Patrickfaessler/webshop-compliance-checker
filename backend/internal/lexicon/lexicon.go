@@ -22,6 +22,7 @@ type Section struct {
 
 // List is the word list of one language.
 type List struct {
+	Lang          string            // "de", "en"
 	Links         map[Kind][]string // matched against link text and URL path
 	Sections      []Section         // R2: exactly six, in spec order
 	Withdrawal    []string          // R5 withdrawal vocabulary

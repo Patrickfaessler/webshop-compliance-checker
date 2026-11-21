@@ -1,6 +1,7 @@
 package lexicon
 
 var de = List{
+	Lang: "de",
 	Links: map[Kind][]string{
 		LegalNotice: {"impressum", "anbieterkennzeichnung", "offenlegung"},
 		Privacy:     {"datenschutzerklärung", "datenschutz", "datenschutzhinweise"},
