@@ -6,6 +6,7 @@ import (
 	"context"
 	"fmt"
 
+	"compliancechecker/internal/fixes"
 	"compliancechecker/internal/rules"
 )
 
@@ -41,7 +42,7 @@ func (Rule) Check(_ context.Context, in rules.Input) (rules.Result, error) {
 			nodes []rules.KeyboardNode
 		}{{"unreachable", k.Unreachable}, {"no-focus-style", k.NoFocusStyle}, {"keyboard-trap", k.Traps}, {"not-focusable", k.NotFocusable}} {
 			for _, n := range g.nodes {
-				findings = append(findings, rules.Finding{PageURL: p.URL, Selector: n.Selector, Snippet: n.Snippet, Sub: g.sub})
+				findings = append(findings, rules.Finding{PageURL: p.URL, Selector: n.Selector, Snippet: n.Snippet, Sub: g.sub, Fix: fixFor(g.sub, n.Selector)})
 			}
 		}
 	}
@@ -56,4 +57,20 @@ func (Rule) Check(_ context.Context, in rules.Input) (rules.Result, error) {
 			presses, capped, probed)}, nil
 	}
 	return rules.Result{State: rules.Passed, DecidedBy: rules.DecidedStructural}, nil
+}
+
+// fixFor is the A5 fix per sub-rule (spec A5 "Fix templates").
+func fixFor(sub, selector string) *rules.Fix {
+	switch sub {
+	case "no-focus-style":
+		return &rules.Fix{TextDe: "Mach sichtbar, welches Element den Fokus hat.",
+			Code: fixes.Fill("{{selector}}:focus-visible { outline: 2px solid currentColor; outline-offset: 2px; }", map[string]string{"selector": selector})}
+	case "not-focusable":
+		return &rules.Fix{TextDe: `Verwende ein <button>-Element. Alternativ role="button" und tabindex="0" ergänzen und Enter/Leertaste per Skript bedienen.`,
+			Code: `<button type="button">…</button>`}
+	case "unreachable":
+		return &rules.Fix{TextDe: `Mach das Element mit der Tab-Taste erreichbar: entferne tabindex="-1" oder Skripte, die den Fokus wegnehmen.`}
+	default: // keyboard-trap
+		return &rules.Fix{TextDe: "Sorge dafür, dass man das Element mit der Tab-Taste wieder verlassen kann."}
+	}
 }

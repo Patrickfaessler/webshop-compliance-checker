@@ -103,6 +103,12 @@ func TestCorpus(t *testing.T) {
 					t.Errorf("%s: %v", id, err)
 					continue
 				}
+				// Spec: A1-F…A6-F — every finding carries a fix with a German text.
+				for _, f := range res.Findings {
+					if f.Fix == nil || f.Fix.TextDe == "" {
+						t.Errorf("%s: finding %s (%s) has no fix", id, f.Selector, f.Sub)
+					}
+				}
 				st := perRule[id]
 				if st == nil {
 					st = &stats{}
