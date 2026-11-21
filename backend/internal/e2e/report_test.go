@@ -21,6 +21,7 @@ import (
 	"compliancechecker/internal/rules/a2"
 	"compliancechecker/internal/rules/a3"
 	"compliancechecker/internal/rules/a4"
+	"compliancechecker/internal/rules/a5"
 	"compliancechecker/internal/rules/a6"
 	"compliancechecker/internal/scan"
 	"compliancechecker/internal/scoring"
@@ -40,7 +41,7 @@ func scanShop(t *testing.T, ctx context.Context, c *crawler.Crawler, base, path 
 		Status: scan.Done, PagesDone: len(res.Pages), CreatedAt: time.Now(), FinishedAt: time.Now()}
 	metas := map[string]rules.Meta{}
 	var outcomes []scoring.Outcome
-	for _, r := range []rules.Rule{a1.New(), a2.New(), a3.New(), a4.New(), a6.New()} {
+	for _, r := range []rules.Rule{a1.New(), a2.New(), a3.New(), a4.New(), a5.New(), a6.New()} {
 		m := r.Meta()
 		metas[m.ID] = m
 		out, err := r.Check(ctx, rules.Input{Pages: res.Pages})
@@ -189,7 +190,7 @@ func selfScan(t *testing.T, ctx context.Context, c *crawler.Crawler, doc []byte)
 	if err != nil {
 		t.Fatal(err)
 	}
-	for _, rule := range []rules.Rule{a1.New(), a2.New(), a3.New(), a4.New(), a6.New()} {
+	for _, rule := range []rules.Rule{a1.New(), a2.New(), a3.New(), a4.New(), a5.New(), a6.New()} {
 		out, err := rule.Check(ctx, rules.Input{Pages: []rules.Page{r.Page}})
 		if err != nil {
 			t.Fatal(err)

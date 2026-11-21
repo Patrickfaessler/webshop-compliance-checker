@@ -69,6 +69,8 @@ func TestProbeKeyboard(t *testing.T) {
 <details><summary id="sum">Mehr</summary><a href="/h5">zu</a></details>`},
 		{name: "focus-within", body: `<style>#q:focus{outline:none} .w:focus-within{outline:2px solid #000}</style><a id="l" href="/x">Link</a> <span class="w"><input id="q" aria-label="Suche"></span>`},
 		{name: "empty", body: `<p>Nur Text</p>`},
+		// a radio group is one Tab stop; the other radios are reached with the arrow keys (WCAG 2.1.1)
+		{name: "radio-group", body: `<form><input type="radio" id="r1" name="pay" value="a" aria-label="Karte"> <input type="radio" id="r2" name="pay" value="b" aria-label="Rechnung"> <button id="b">Weiter</button></form>`},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

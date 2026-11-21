@@ -250,7 +250,14 @@ const keyboardPrepareScript = `(() => {
         candidate: !!b, styleChanged: b ? (style(el) !== b[0] || style(el.parentElement) !== b[1]) : true};
     },
     styleChanged() { const b = base.get(current); return !b || style(current) !== b[0] || style(current.parentElement) !== b[1]; },
-    unreached() { return cands.filter(el => !ids.has(el) && el.isConnected).map(node); },
+    unreached() {
+      // a radio group is one Tab stop: one focused radio reaches the whole group (same name and form)
+      const group = el => el.localName === "input" && el.type === "radio" && el.name ? (el.form ? "f" : "d") + "|" + el.name : "";
+      const formOf = el => el.form || document;
+      const reached = el => { const g = group(el); if (!g) return false;
+        for (const r of ids.keys()) if (group(r) === g && formOf(r) === formOf(el)) return true; return false; };
+      return cands.filter(el => !ids.has(el) && el.isConnected && !reached(el)).map(node);
+    },
   };
   return {candidates: cands.length, pointers: ptr.length, notFocusable: nf};
 })()`
