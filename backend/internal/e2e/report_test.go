@@ -2,11 +2,14 @@ package e2e
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"os"
+	"path"
 	"path/filepath"
+	"slices"
 	"strings"
 	"testing"
 	"time"
@@ -64,7 +67,7 @@ func scanShop(t *testing.T, ctx context.Context, c *crawler.Crawler, base, path 
 	return sc, metas
 }
 
-// Spec: RP-A4 — every planted defect with an element is framed on its page; whole-page rules get the banner.
+// Spec: RP-A4 — every planted defect (expected.json) is framed on its page; planted A6 defects get the whole-page banner.
 // Spec: RP-9, N7 — the report itself passes our rules A1–A6.
 // With REPORT_OUT=<dir> the HTML and PDF report of each shop are written there for a visual check.
 func TestShopReports(t *testing.T) {
@@ -87,20 +90,51 @@ func TestShopReports(t *testing.T) {
 				t.Fatal("shop has no findings")
 			}
 
+			raw, err := os.ReadFile(filepath.Join(siteDir, shop, "expected.json"))
+			if err != nil {
+				t.Fatal(err)
+			}
+			var exp expectation
+			if err := json.Unmarshal(raw, &exp); err != nil {
+				t.Fatal(err)
+			}
+
 			withFindings := map[string]bool{}
+			positions := map[string][]string{} // "page rule" → positions of its findings
 			elements := 0
 			for _, f := range sc.Findings {
 				withFindings[f.URL] = true
-				switch {
-				case f.RuleID == "A6" && f.Position != "page":
-					t.Errorf("A6 on %s: position %q, want page", f.URL, f.Position)
-				case (f.RuleID == "A1" || f.RuleID == "A2" || f.RuleID == "A3") && f.Position != "element":
-					t.Errorf("%s %s on %s: position %q, want element", f.RuleID, f.Selector, f.URL, f.Position)
-				case f.RuleID == "A4" && f.Position != "element" && f.Position != "page":
-					t.Errorf("A4 %s on %s: position %q", f.Selector, f.URL, f.Position)
+				page := strings.TrimPrefix(f.URL, srv.URL+"/"+shop)
+				if page == "" {
+					page = "index.html"
+				}
+				positions[page+" "+f.RuleID] = append(positions[page+" "+f.RuleID], f.Position)
+				if f.Position == "" && len(withFindings) <= worker.MaxShotPages {
+					t.Errorf("%s %s on %s: no position although the page was captured", f.RuleID, f.Selector, f.URL)
 				}
 				if f.Position == "element" {
 					elements++
+				}
+			}
+			// RP-A4: every planted defect is framed on its page (A6: whole-page banner)
+			for _, pl := range exp.Planted {
+				want := "element"
+				if pl.Rule == "A6" {
+					want = "page"
+				} else if pl.Rule > "A4" {
+					continue
+				}
+				for _, pattern := range pagePatterns(pl.Page) {
+					var got []string
+					for key, pos := range positions {
+						page, rule, _ := strings.Cut(key, " ")
+						if ok, _ := path.Match(pattern, page); ok && rule == pl.Rule {
+							got = append(got, pos...)
+						}
+					}
+					if !slices.Contains(got, want) {
+						t.Errorf("planted %s on %s: positions %v, want one %q", pl.Rule, pattern, got, want)
+					}
 				}
 			}
 			if want := min(len(withFindings), worker.MaxShotPages); len(sc.Shots) != want {
@@ -164,4 +198,24 @@ func selfScan(t *testing.T, ctx context.Context, c *crawler.Crawler, doc []byte)
 			t.Errorf("report fails its own rule %s: %+v", rule.Meta().ID, out.Findings)
 		}
 	}
+}
+
+// pagePatterns turns the page field of a planted defect into glob patterns: "index.html, produkt-*.html" is a list,
+// "alle Seiten (Kopfbereich)" means every page, "—" means no page (RP-A4).
+func pagePatterns(field string) []string {
+	var out []string
+	for _, part := range strings.Split(field, ",") {
+		part = strings.TrimSpace(part)
+		if i := strings.Index(part, " ("); i >= 0 {
+			part = part[:i]
+		}
+		switch part {
+		case "", "—":
+		case "alle Seiten":
+			out = append(out, "*")
+		default:
+			out = append(out, part)
+		}
+	}
+	return out
 }

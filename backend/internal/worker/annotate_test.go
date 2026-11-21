@@ -79,3 +79,29 @@ func TestRunAnnotates(t *testing.T) {
 		t.Fatal("annotator called without findings")
 	}
 }
+
+// Spec: RP-4 — captures stop once the screenshot budget of the scan is reached; those pages get no marks.
+func TestCapturePagesBudget(t *testing.T) {
+	fs := []scan.Finding{{URL: "/a", Selector: "#x", Snippet: "<p id=\"x\">"}, {URL: "/b", Selector: "#y"}, {URL: "/c", Selector: "#z"}}
+	plan := shotPlan(fs, []string{"/a", "/b", "/c"}, MaxShotPages)
+	var got []crawler.Target
+	shots, out := capturePages(context.Background(), fs, plan, 25, func(url string, ts []crawler.Target) (crawler.Capture, error) {
+		if url == "/a" {
+			got = ts
+		}
+		return crawler.Capture{Image: make([]byte, 10), Placements: []crawler.Placement{{Position: crawler.PosElement, Box: &crawler.Box{}}}}, nil
+	})
+	if len(shots) != 2 || shots[1].URL != "/b" {
+		t.Fatalf("shots = %d, want /a and /b within 25 bytes", len(shots))
+	}
+	if out[1].Position != "element" || out[2].Position != "" {
+		t.Errorf("positions = %q, %q; the page over budget must stay without marks", out[1].Position, out[2].Position)
+	}
+	if fs[0].Position != "" {
+		t.Error("input findings were modified")
+	}
+	// Spec: RP-3a — the snippet travels with the selector to the capture
+	if len(got) != 1 || got[0].Snippet != "<p id=\"x\">" {
+		t.Errorf("targets = %+v", got)
+	}
+}

@@ -2,19 +2,18 @@
 package api
 
 import (
-	"bytes"
 	"context"
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
 	"errors"
-	"log"
 	"net"
 	"net/http"
 	"net/netip"
 	"slices"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"compliancechecker/internal/ratelimit"
@@ -43,6 +42,11 @@ type Server struct {
 	TrustedProxies []netip.Prefix
 	// PDF prints the HTML report to PDF (ADR-7, RP-10). nil or an error = text PDF (RP-11).
 	PDF PDFPrinter
+
+	renders   renderCache   // RP-12: HTML/PDF rendered once per scan
+	prints    chan struct{} // RP-12: running PDF prints, at most maxPrints
+	printOnce sync.Once
+	printWait time.Duration // RP-12: how long a request waits for a print slot; 0 = defaultPrintWait
 }
 
 // PDFPrinter turns an HTML document into a PDF; *crawler.Crawler implements it.
@@ -299,22 +303,22 @@ func problem(w http.ResponseWriter, code int, titleDe string, retryAfter int) {
 const notFoundDe = "Diese Prüfung gibt es nicht (mehr). Ergebnisse werden nicht gespeichert und nach einer Stunde gelöscht."
 
 // finishedReport loads a scan and builds its report, or writes the error response.
-func (s *Server) finishedReport(w http.ResponseWriter, r *http.Request) (report.Report, bool) {
+func (s *Server) finishedReport(w http.ResponseWriter, r *http.Request) (scan.Scan, report.Report, bool) {
 	sc, ok := s.Store.Get(r.PathValue("id"))
 	if !ok {
 		problem(w, http.StatusNotFound, notFoundDe, 0)
-		return report.Report{}, false
+		return scan.Scan{}, report.Report{}, false
 	}
 	rep, err := report.Build(sc, s.RuleMeta, s.now())
 	if errors.Is(err, report.ErrNotFinished) {
 		problem(w, http.StatusConflict, "Der Bericht ist erst verfügbar, wenn die Prüfung abgeschlossen ist.", 0)
-		return report.Report{}, false
+		return scan.Scan{}, report.Report{}, false
 	}
 	if err != nil {
 		problem(w, http.StatusInternalServerError, "Der Bericht konnte nicht erstellt werden.", 0)
-		return report.Report{}, false
+		return scan.Scan{}, report.Report{}, false
 	}
-	return rep, true
+	return sc, rep, true
 }
 
 func download(w http.ResponseWriter, contentType, fileName string, body []byte) {
@@ -327,7 +331,7 @@ func download(w http.ResponseWriter, contentType, fileName string, body []byte) 
 
 // reportJSON serves the report as JSON (F13).
 func (s *Server) reportJSON(w http.ResponseWriter, r *http.Request) {
-	rep, ok := s.finishedReport(w, r)
+	_, rep, ok := s.finishedReport(w, r)
 	if !ok {
 		return
 	}
@@ -341,18 +345,14 @@ func (s *Server) reportJSON(w http.ResponseWriter, r *http.Request) {
 
 // reportPDF serves the report as PDF (F10).
 func (s *Server) reportPDF(w http.ResponseWriter, r *http.Request) {
-	rep, ok := s.finishedReport(w, r)
+	sc, rep, ok := s.finishedReport(w, r)
 	if !ok {
 		return
 	}
-	if s.PDF != nil { // RP-10: print the visual report
-		if doc, err := rep.HTML(); err == nil {
-			if b, err := s.PDF.PrintPDF(r.Context(), doc, 60*time.Second); err == nil && bytes.HasPrefix(b, []byte("%PDF")) {
-				download(w, "application/pdf", rep.FileName("pdf"), b)
-				return
-			} else if err != nil {
-				log.Printf("report: printing PDF failed, serving text PDF: %v", err)
-			}
+	if s.PDF != nil { // RP-10: print the visual report, once per scan and at most maxPrints at a time (RP-12)
+		if b := s.printedPDF(r.Context(), sc, rep); b != nil {
+			download(w, "application/pdf", rep.FileName("pdf"), b)
+			return
 		}
 	}
 	b, err := rep.PDF(report.PDFOptions{}) // RP-11: text PDF without a browser
@@ -365,11 +365,11 @@ func (s *Server) reportPDF(w http.ResponseWriter, r *http.Request) {
 
 // reportHTML shows the visual report (F14, RP-5); ?download=1 sends it as a file.
 func (s *Server) reportHTML(w http.ResponseWriter, r *http.Request) {
-	rep, ok := s.finishedReport(w, r)
+	sc, rep, ok := s.finishedReport(w, r)
 	if !ok {
 		return
 	}
-	b, err := rep.HTML()
+	b, err := s.cachedHTML(r.Context(), sc, rep) // RP-12
 	if err != nil {
 		problem(w, http.StatusInternalServerError, "Der Bericht konnte nicht erstellt werden.", 0)
 		return

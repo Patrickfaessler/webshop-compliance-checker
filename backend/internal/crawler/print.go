@@ -51,8 +51,11 @@ func (s *Session) PrintPDF(ctx context.Context, htmlDoc []byte, timeout time.Dur
 		return nil, fmt.Errorf("crawler: opening blank page: %w", err)
 	}
 	tree, err := chromedp.Call(rctx, page.GetFrameTree, cdp.Empty{})
-	if err != nil || tree.FrameTree == nil || tree.FrameTree.Frame == nil {
-		return nil, fmt.Errorf("crawler: reading frame tree: %v", err)
+	if err != nil {
+		return nil, fmt.Errorf("crawler: reading frame tree: %w", err)
+	}
+	if tree.FrameTree == nil || tree.FrameTree.Frame == nil {
+		return nil, fmt.Errorf("crawler: reading frame tree: browser returned no main frame")
 	}
 	if _, err := chromedp.Call(rctx, page.SetDocumentContent, page.SetDocumentContentParams{
 		FrameID: tree.FrameTree.Frame.ID, HTML: string(htmlDoc),

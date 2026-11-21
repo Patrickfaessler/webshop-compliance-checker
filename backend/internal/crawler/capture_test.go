@@ -25,6 +25,8 @@ func TestPlace(t *testing.T) {
 		{"zero size", "#x", rawBox{Found: true, Visible: false, Width: 0, Height: 0}, PosHidden},
 		{"empty heading (zero height)", "#x", rawBox{Found: true, Visible: true, X: 5, Y: 5, Width: 600, Height: 0}, PosElement},
 		{"below screenshot", "#x", rawBox{Found: true, Visible: true, Y: 2500, Width: 10, Height: 10}, PosOutside},
+		{"left of the page", "#x", rawBox{Found: true, Visible: true, X: -9999, Y: 10, Width: 10, Height: 10}, PosOutside},
+		{"empty heading at the very top", "#x", rawBox{Found: true, Visible: true, X: 0, Y: 0, Width: 600, Height: 0}, PosElement},
 		{"visible", "#x", rawBox{Found: true, Visible: true, X: 100, Y: 200, Width: 50, Height: 20}, PosElement},
 	}
 	for _, tt := range tests {
@@ -60,16 +62,29 @@ func TestCaptureSize(t *testing.T) {
 const capturePage = `<!DOCTYPE html><html lang="de"><head><style>body{margin:0;font:16px sans-serif}</style></head><body>
 <h1 id="title" style="position:absolute;left:100px;top:50px;width:300px;height:40px;margin:0">Titel</h1>
 <p id="gone" style="display:none">versteckt</p>
+<div id="a.b"><img id="logo" alt="" src="data:," style="width:20px;height:20px"></div>
 <div style="height:9000px"></div>
 <p id="deep">ganz unten</p>
 </body></html>`
 
-// Spec: RP-A1 — one render gives a JPEG screenshot and one placement per selector.
+// Spec: RP-A1, RP-A6 — one render gives a JPEG screenshot and one placement per selector.
 func TestCaptureHTML(t *testing.T) {
 	s := openOrSkip(t, &Crawler{Validate: allowLoopback})
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
-	c, err := s.CaptureHTML(ctx, capturePage, []string{"#title", "html", "#missing", "#gone", "#deep", "p:::bad"}, 20*time.Second)
+	targets := []Target{
+		{Selector: "#title", Snippet: `<h1 id="title" style="...">`},
+		{Selector: "html"},
+		{Selector: "#missing"},
+		{Selector: "#gone", Snippet: `<p id="gone">`},
+		{Selector: "#deep"},
+		{Selector: "p:::bad"},
+		{Selector: "#title", Snippet: `<h2 id="title">`},             // RP-3a: other tag
+		{Selector: "#title", Snippet: `<h1 id="headline">`},          // RP-3a: other id
+		{Selector: `#a\.b > img`, Snippet: `<img id="logo" alt="">`}, // RP-3b: escaped id
+		{Selector: "#title", Snippet: "Text without a tag"},          // no opening tag: not checked
+	}
+	c, err := s.CaptureHTML(ctx, capturePage, targets, 20*time.Second)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -79,7 +94,8 @@ func TestCaptureHTML(t *testing.T) {
 	if c.Width != CaptureViewportWidth || c.Height != CaptureMaxHeight || !c.Truncated || c.ViewportWidth != CaptureViewportWidth {
 		t.Errorf("size = %d×%d truncated=%v", c.Width, c.Height, c.Truncated)
 	}
-	want := []Position{PosElement, PosPage, PosNotFound, PosHidden, PosOutside, PosNotFound}
+	want := []Position{PosElement, PosPage, PosNotFound, PosHidden, PosOutside, PosNotFound,
+		PosNotFound, PosNotFound, PosElement, PosElement}
 	if len(c.Placements) != len(want) {
 		t.Fatalf("placements = %+v", c.Placements)
 	}
@@ -113,5 +129,21 @@ func TestPrintPDFBlocksNetwork(t *testing.T) {
 	}
 	if n := hits.Load(); n != 0 {
 		t.Fatalf("print tab made %d network requests", n)
+	}
+}
+
+// Spec: RP-3a — the expected element is read from the snippet's opening tag.
+func TestExpectFromSnippet(t *testing.T) {
+	e := expectFromSnippet(`<INPUT Name="q" id="search" class="x" for="y" src="a.png">`)
+	if e.Tag != "input" || len(e.Attrs) != 3 || e.Attrs["name"] != "q" || e.Attrs["id"] != "search" || e.Attrs["for"] != "y" {
+		t.Errorf("expect = %+v", e)
+	}
+	for _, sn := range []string{"", "Keine h1-Überschrift gefunden", "</div>"} {
+		if e := expectFromSnippet(sn); e.Tag != "" || len(e.Attrs) != 0 {
+			t.Errorf("%q: expect = %+v, want nothing", sn, e)
+		}
+	}
+	if e := expectFromSnippet(`<img alt="" src="x.png">…`); e.Tag != "img" || len(e.Attrs) != 0 {
+		t.Errorf("img: expect = %+v", e)
 	}
 }

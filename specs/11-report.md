@@ -22,14 +22,25 @@ printed from the same HTML (ADR-7). It builds on the JSON report (`internal/repo
   | `element` | element found, visible, inside the screenshot | numbered frame on the screenshot + cropped detail |
   | `page` | selector is `html` (rule concerns the whole page, e.g. A6, A4 `no-h1`) | banner "betrifft die ganze Seite" |
   | `hidden` | element found but without area (width and height 0), `display:none`, `visibility:hidden` or `opacity:0` | listed, "Element ist nicht sichtbar" |
-  | `outside` | element lies below the capped screenshot | listed, "außerhalb des Screenshots" |
-  | `not_found` | selector matches nothing in the new render (page changed, invalid selector) | listed, "Position nicht ermittelbar" |
+  | `outside` | element lies outside the capped screenshot (below it, or left/right of the page) | listed, "außerhalb des Screenshot-Ausschnitts" |
+  | `not_found` | selector matches nothing in the new render, matches an element that is not the finding's element (RP-3a), or is invalid | listed, "Position nicht ermittelbar" |
   | *(empty)* | no capture for this page (no browser, limit, error) | listed without marks |
 
   An element with only one zero side (e.g. an empty `<h2></h2>`, A4 `empty-heading`) is `element` with a frame of
-  at least 8 px, so the user still sees where it is.
+  at least 8 px, so the user still sees where it is. The `outside` test uses that minimum frame, so an empty heading
+  at the very top is still `element`.
+- **RP-3a Match check.** The second render can differ from the crawl (carousels, banners, A/B tests), so a selector
+  may hit a different element. The capture therefore checks the matched element against the finding's snippet
+  (its opening tag): the **tag name** must be equal, and every **`id`, `name` and `for`** attribute in the snippet
+  must have the same value on the element. Otherwise the finding is `not_found`, never a frame on a wrong element.
+  (`src`/`class` are not compared: lazy loaders and scripts change them.) A snippet without an opening tag is not
+  checked. Known limit: two siblings with the same tag and none of these attributes cannot be told apart.
+- **RP-3b Selector syntax.** Selectors built by our own rules (`domutil.Selector`) write an id as an escaped CSS
+  identifier (`#a\.b`, like `CSS.escape`), so ids with `.`, `:`, `[`, a leading digit etc. select the right element.
 - **RP-4 Limits and safety.** At most **15 pages** are captured per scan (crawl order). Every request of the capture
-  tab goes through the same SSRF check as the crawler (C-SSRF). A failed capture never fails the scan; the report is
+  tab goes through the same SSRF check as the crawler (C-SSRF). The screenshots of one scan may take at most
+  **24 MiB** together; once that is reached, the remaining pages are not captured (shown without marks, like over the
+  page limit). A failed capture never fails the scan; the report is
   then shown without marks for that page. Captures stay in memory with the scan and are deleted with it (ADR-6, N4);
   the PostgreSQL store does not persist them.
 
@@ -59,6 +70,14 @@ printed from the same HTML (ADR-7). It builds on the JSON report (`internal/repo
 - **RP-11 Fallback.** Without a browser (or if printing fails) the existing text PDF (`fpdf`) is served, so the
   download never breaks.
 
+## Rendering limits (RP-12)
+
+- **RP-12 Cache and concurrency.** A finished scan never changes, so the HTML report and the printed PDF are rendered
+  **once per scan** and cached in memory for at most the scan retention (ADR-6), at most 32 scans (oldest evicted).
+  The "erstellt am" time in the report is the time of that first render. At most **2 PDFs** are printed at the same
+  time; a request that cannot start printing within 20 s gets the text PDF (RP-11) instead of waiting longer or
+  starting another browser.
+
 ## API
 
 - `GET /api/scans/{id}/report.html` shows the HTML report inline; with `?download=1` it is sent as attachment
@@ -76,7 +95,12 @@ printed from the same HTML (ADR-7). It builds on the JSON report (`internal/repo
   finding, numbers 1…n without gaps, a link from every frame to its card and back, and the disclaimer twice.
 - RP-A3: the HTML contains no `<script>`, no `http://`/`https://` resource URLs (only text) and no event handler
   attributes; user-controlled text (snippet, selector, URL) is escaped.
-- RP-A4: test shop "Radwerk Alpin": every planted defect of A1–A4 that has an element appears as a frame on the
-  right page.
+- RP-A4: test shops "Radwerk Alpin" and "Seifen": for every planted defect of A1–A4 (`expected.json` → `planted`,
+  page + rule; `page` may be a comma list of globs such as `produkt-*.html`, "alle Seiten" = every page) at least one finding of that rule on that page is framed (`element`); planted A6 defects are `page`.
+  Other findings may have any position except empty (every page with findings is captured).
+- RP-A6: a capture whose selector matches an element with another tag or another `id`/`name`/`for` than the snippet
+  returns `not_found`; `domutil.Selector` escapes ids (`a.b` → `#a\.b`, `1x` → `#\31 x`).
+- RP-A7: the HTML/PDF of a scan is rendered once for repeated requests; with 2 prints running, a third request gets
+  the text PDF after the wait limit.
 - RP-A5: the printed PDF starts with `%PDF`, contains the disclaimer text and is tagged; without a browser the
   `fpdf` PDF is returned.

@@ -12,6 +12,9 @@ import (
 // MaxShotPages is the number of pages captured per scan (specs/11-report.md RP-4).
 const MaxShotPages = 15
 
+// MaxShotBytes is the total size of all screenshots of one scan (RP-4).
+const MaxShotBytes = 24 << 20
+
 // CrawlAnnotator renders each page with findings once more in the browser and takes a screenshot (RP-1 … RP-4).
 type CrawlAnnotator struct {
 	Crawler     *crawler.Crawler
@@ -34,21 +37,35 @@ func (a CrawlAnnotator) Annotate(ctx context.Context, findings []scan.Finding, p
 	if timeout <= 0 {
 		timeout = 20 * time.Second
 	}
+	return capturePages(ctx, findings, plan, MaxShotBytes, func(url string, targets []crawler.Target) (crawler.Capture, error) {
+		return sess.Capture(ctx, url, targets, timeout)
+	})
+}
+
+// capturePages takes one capture per planned page until the plan or the byte budget is used up (RP-4).
+func capturePages(ctx context.Context, findings []scan.Finding, plan []pagePlan, budget int,
+	capture func(url string, targets []crawler.Target) (crawler.Capture, error)) ([]scan.Shot, []scan.Finding) {
 	out := append([]scan.Finding(nil), findings...)
 	var shots []scan.Shot
+	used := 0
 	for _, p := range plan {
 		if ctx.Err() != nil {
 			break
 		}
-		sels := make([]string, len(p.idx))
+		targets := make([]crawler.Target, len(p.idx))
 		for i, fi := range p.idx {
-			sels[i] = out[fi].Selector
+			targets[i] = crawler.Target{Selector: out[fi].Selector, Snippet: out[fi].Snippet}
 		}
-		c, err := sess.Capture(ctx, p.url, sels, timeout)
+		c, err := capture(p.url, targets)
 		if err != nil {
 			log.Printf("annotate: %v", err) // RP-4: the report is shown without marks for this page
 			continue
 		}
+		if used+len(c.Image) > budget {
+			log.Printf("annotate: screenshot budget of %d bytes reached, %s and later pages without marks", budget, p.url)
+			break
+		}
+		used += len(c.Image)
 		shots = append(shots, scan.Shot{
 			URL: p.url, Image: c.Image, Width: c.Width, Height: c.Height,
 			ViewportWidth: c.ViewportWidth, Truncated: c.Truncated,

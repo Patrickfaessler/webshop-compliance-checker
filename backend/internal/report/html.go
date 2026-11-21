@@ -211,7 +211,7 @@ func positionNoteDe(pos string, hasShot bool) string {
 	case "hidden":
 		return "Das Element ist auf der Seite nicht sichtbar, deshalb gibt es keine Markierung."
 	case "outside":
-		return "Das Element liegt unterhalb des Screenshot-Ausschnitts."
+		return "Das Element liegt außerhalb des Screenshot-Ausschnitts."
 	case "not_found":
 		return "Die Position des Elements konnte nicht ermittelt werden."
 	}

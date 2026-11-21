@@ -168,3 +168,10 @@ func TestHTMLReportWithoutFindings(t *testing.T) {
 		t.Fatalf("err=%v", err)
 	}
 }
+
+// Spec: RP-3 — "outside" covers below, left and right of the screenshot, so the note must not say "unterhalb".
+func TestPositionNoteOutside(t *testing.T) {
+	if got := positionNoteDe("outside", true); !strings.Contains(got, "außerhalb des Screenshot-Ausschnitts") {
+		t.Errorf("outside note = %q", got)
+	}
+}
