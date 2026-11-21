@@ -98,7 +98,7 @@ func (s *Store) ctx() (context.Context, context.CancelFunc) {
 }
 
 const scanColumns = `id, host, target_key, start_url, areas, status, pages_done, pages_total, score, error_de,
-	previous_scan_id, created_at, finished_at, expires_at`
+	previous_scan_id, created_at, finished_at, expires_at, keyboard_all_pages, keyboard_max_presses, keyboard_pages`
 
 // Create implements scan.Store.
 func (s *Store) Create(sc scan.Scan) error {
@@ -147,7 +147,8 @@ func (s *Store) Update(id string, fn func(*scan.Scan)) bool {
 	after.ID = id // the id is the key and never changes
 
 	if _, err := tx.Exec(ctx, `UPDATE scans SET host=$2, target_key=$3, start_url=$4, areas=$5, status=$6, pages_done=$7,
-		pages_total=$8, score=$9, error_de=$10, previous_scan_id=$11, created_at=$12, finished_at=$13, expires_at=$14
+		pages_total=$8, score=$9, error_de=$10, previous_scan_id=$11, created_at=$12, finished_at=$13, expires_at=$14,
+		keyboard_all_pages=$15, keyboard_max_presses=$16, keyboard_pages=$17
 		WHERE id=$1`, scanArgs(after)...); err != nil {
 		return false
 	}
@@ -199,20 +200,24 @@ func scanArgs(sc scan.Scan) []any {
 	if areas == nil {
 		areas = []string{}
 	}
+	kbPages := sc.KeyboardPages
+	if kbPages == nil {
+		kbPages = []string{}
+	}
 	return []any{sc.ID, sc.Host, sc.TargetKey, sc.StartURL, areas, string(sc.Status), sc.PagesDone, sc.PagesTotal, sc.Score,
-		sc.ErrorDe, sc.PreviousScanID, sc.CreatedAt, finished, sc.ExpiresAt}
+		sc.ErrorDe, sc.PreviousScanID, sc.CreatedAt, finished, sc.ExpiresAt, sc.KeyboardAllPages, sc.KeyboardMaxPresses, kbPages}
 }
 
 func insertScan(ctx context.Context, tx pgx.Tx, sc scan.Scan) error {
 	_, err := tx.Exec(ctx, `INSERT INTO scans (`+scanColumns+`)
-		VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14)`, scanArgs(sc)...)
+		VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17)`, scanArgs(sc)...)
 	return err
 }
 
 func writeChildren(ctx context.Context, tx pgx.Tx, sc scan.Scan) error {
 	for i, rr := range sc.RuleResults {
-		if _, err := tx.Exec(ctx, `INSERT INTO rule_results (scan_id, position, rule_id, state, decided_by, pages_affected)
-			VALUES ($1,$2,$3,$4,$5,$6)`, sc.ID, i, rr.RuleID, string(rr.State), string(rr.DecidedBy), rr.PagesAffected); err != nil {
+		if _, err := tx.Exec(ctx, `INSERT INTO rule_results (scan_id, position, rule_id, state, decided_by, pages_affected, note_de)
+			VALUES ($1,$2,$3,$4,$5,$6,$7)`, sc.ID, i, rr.RuleID, string(rr.State), string(rr.DecidedBy), rr.PagesAffected, rr.NoteDe); err != nil {
 			return err
 		}
 	}
@@ -236,7 +241,7 @@ func loadScan(ctx context.Context, q querier, where string, args ...any) (scan.S
 	)
 	err := q.QueryRow(ctx, `SELECT `+scanColumns+` FROM scans `+where, args...).Scan(
 		&sc.ID, &sc.Host, &sc.TargetKey, &sc.StartURL, &sc.Areas, &status, &sc.PagesDone, &sc.PagesTotal, &sc.Score, &sc.ErrorDe,
-		&sc.PreviousScanID, &sc.CreatedAt, &finished, &sc.ExpiresAt)
+		&sc.PreviousScanID, &sc.CreatedAt, &finished, &sc.ExpiresAt, &sc.KeyboardAllPages, &sc.KeyboardMaxPresses, &sc.KeyboardPages)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return scan.Scan{}, errNotFound
 	}
@@ -248,7 +253,7 @@ func loadScan(ctx context.Context, q querier, where string, args ...any) (scan.S
 		sc.FinishedAt = *finished
 	}
 
-	rows, err := q.Query(ctx, `SELECT rule_id, state, decided_by, pages_affected FROM rule_results
+	rows, err := q.Query(ctx, `SELECT rule_id, state, decided_by, pages_affected, note_de FROM rule_results
 		WHERE scan_id = $1 ORDER BY position`, sc.ID)
 	if err != nil {
 		return scan.Scan{}, err
@@ -256,7 +261,7 @@ func loadScan(ctx context.Context, q querier, where string, args ...any) (scan.S
 	for rows.Next() {
 		var rr scan.RuleResult
 		var state, decided string
-		if err := rows.Scan(&rr.RuleID, &state, &decided, &rr.PagesAffected); err != nil {
+		if err := rows.Scan(&rr.RuleID, &state, &decided, &rr.PagesAffected, &rr.NoteDe); err != nil {
 			rows.Close()
 			return scan.Scan{}, err
 		}

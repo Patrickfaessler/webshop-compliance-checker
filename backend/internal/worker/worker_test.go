@@ -6,6 +6,7 @@ import (
 	"testing"
 	"time"
 
+	"compliancechecker/internal/crawler"
 	"compliancechecker/internal/rules"
 	"compliancechecker/internal/rules/a6"
 	"compliancechecker/internal/scan"
@@ -15,10 +16,22 @@ type fakeSource struct {
 	pages      []rules.Page
 	incomplete bool
 	err        error
-	total      int // reported through progress when > 0
+	total      int                      // reported through progress when > 0
+	gotKB      *crawler.KeyboardOptions // records the keyboard options it was called with
+	delay      time.Duration            // waits this long (or until ctx ends)
 }
 
-func (f fakeSource) Pages(_ context.Context, _ string, progress func(done, total int)) ([]rules.Page, bool, error) {
+func (f fakeSource) Pages(ctx context.Context, _ string, kb crawler.KeyboardOptions, progress func(done, total int)) ([]rules.Page, bool, error) {
+	if f.gotKB != nil {
+		*f.gotKB = kb
+	}
+	if f.delay > 0 {
+		select {
+		case <-time.After(f.delay):
+		case <-ctx.Done():
+			return nil, true, ctx.Err()
+		}
+	}
 	if progress != nil && f.total > 0 {
 		progress(len(f.pages), f.total)
 	}
@@ -161,5 +174,45 @@ func TestRunCopiesRuleNote(t *testing.T) {
 	s, _ := st.Get("s1")
 	if len(s.RuleResults) != 1 || s.RuleResults[0].NoteDe != "Hinweis X" {
 		t.Fatalf("rule results = %+v", s.RuleResults)
+	}
+}
+
+// Spec: A5-8, A5-6 — the worker passes the scan's keyboard options to the source and records the probed pages.
+func TestRunPassesKeyboardOptions(t *testing.T) {
+	var released []string
+	var got crawler.KeyboardOptions
+	pages := []rules.Page{
+		{URL: "https://shop.example/", HTML: `<html lang="de"></html>`, Keyboard: &rules.KeyboardReport{Completed: true}},
+		{URL: "https://shop.example/agb", HTML: `<html lang="de"></html>`},
+	}
+	r, st := newRunner(fakeSource{pages: pages, gotKB: &got}, &released)
+	if err := st.Create(scan.Scan{ID: "s1", StartURL: "https://shop.example/", Areas: []string{"accessibility"}, Status: scan.Queued,
+		KeyboardAllPages: true, KeyboardMaxPresses: 500}); err != nil {
+		t.Fatal(err)
+	}
+	r.Run(context.Background(), Job{ScanID: "s1"})
+	if got != (crawler.KeyboardOptions{AllPages: true, MaxPresses: 500}) {
+		t.Errorf("source got %+v", got)
+	}
+	s, _ := st.Get("s1")
+	if len(s.KeyboardPages) != 1 || s.KeyboardPages[0] != "https://shop.example/" {
+		t.Errorf("keyboard pages = %v", s.KeyboardPages)
+	}
+}
+
+// Spec: C-1 — mode "alle Seiten" gets the longer time limit.
+func TestRunAllPagesTimeout(t *testing.T) {
+	for _, all := range []bool{false, true} {
+		var released []string
+		r, st := newRunner(fakeSource{pages: []rules.Page{page(`<html lang="de"></html>`)}, delay: 100 * time.Millisecond}, &released)
+		r.Timeout, r.TimeoutAllPages = 50*time.Millisecond, 400*time.Millisecond
+		if err := st.Create(scan.Scan{ID: "s1", StartURL: "https://shop.example/", Areas: []string{"accessibility"}, Status: scan.Queued, KeyboardAllPages: all}); err != nil {
+			t.Fatal(err)
+		}
+		r.Run(context.Background(), Job{ScanID: "s1"})
+		s, _ := st.Get("s1")
+		if want := map[bool]scan.Status{false: scan.Failed, true: scan.Done}[all]; s.Status != want {
+			t.Errorf("all=%v: status %s, want %s", all, s.Status, want)
+		}
 	}
 }

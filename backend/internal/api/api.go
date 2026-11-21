@@ -16,6 +16,7 @@ import (
 	"sync"
 	"time"
 
+	"compliancechecker/internal/crawler"
 	"compliancechecker/internal/ratelimit"
 	"compliancechecker/internal/report"
 	"compliancechecker/internal/rules"
@@ -99,6 +100,9 @@ type scanRequest struct {
 	URL            string   `json:"url"`
 	Areas          []string `json:"areas"`
 	PreviousScanID string   `json:"previousScanId"`
+	// A5 (specs/rules/A5-keyboard.md): probe every page, Tab limit per page (nil = 200)
+	KeyboardAllPages   bool `json:"keyboardAllPages"`
+	KeyboardMaxPresses *int `json:"keyboardMaxPresses"`
 }
 
 type scanStatus struct {
@@ -110,6 +114,10 @@ type scanStatus struct {
 	ErrorDe      string    `json:"errorDe,omitempty"`
 	ExpiresAt    time.Time `json:"expiresAt"`
 	DisclaimerDe string    `json:"disclaimerDe"`
+	// A5 mode, Tab limit and pages with a keyboard result
+	KeyboardAllPages    bool `json:"keyboardAllPages"`
+	KeyboardMaxPresses  int  `json:"keyboardMaxPresses"`
+	KeyboardPagesProbed int  `json:"keyboardPagesProbed"`
 }
 
 type ruleResultJSON struct {
@@ -132,6 +140,7 @@ func toStatus(sc scan.Scan) scanStatus {
 	return scanStatus{
 		ID: sc.ID, Status: string(sc.Status), PagesDone: sc.PagesDone, PagesTotal: sc.PagesTotal,
 		Score: sc.Score, ErrorDe: sc.ErrorDe, ExpiresAt: sc.ExpiresAt, DisclaimerDe: scan.DisclaimerDe,
+		KeyboardAllPages: sc.KeyboardAllPages, KeyboardMaxPresses: sc.KeyboardMaxPresses, KeyboardPagesProbed: len(sc.KeyboardPages),
 	}
 }
 
@@ -146,6 +155,14 @@ func (s *Server) createScan(w http.ResponseWriter, r *http.Request) {
 	areas, ok := normalizeAreas(req.Areas)
 	if !ok {
 		problem(w, http.StatusBadRequest, "Unbekannter Prüfbereich. Erlaubt: accessibility, legal.", 0)
+		return
+	}
+	presses := crawler.DefaultKeyboardPresses // A5-8
+	if req.KeyboardMaxPresses != nil {
+		presses = *req.KeyboardMaxPresses
+	}
+	if presses < crawler.MinKeyboardPresses || presses > crawler.MaxKeyboardPresses {
+		problem(w, http.StatusBadRequest, "Tab-Drücke pro Seite: erlaubt sind 50 bis 1000.", 0)
 		return
 	}
 	u, _, err := s.SSRF.Validate(r.Context(), req.URL, s.Lookup)
@@ -163,7 +180,9 @@ func (s *Server) createScan(w http.ResponseWriter, r *http.Request) {
 	// Per address, not per host: several shops can share one host.
 	target := scan.TargetKey(u)
 	if s.TargetCooldown > 0 {
-		if prev, found := s.Store.LatestForTarget(target, s.now().Add(-s.TargetCooldown)); found {
+		prev, found := s.Store.LatestForTarget(target, s.now().Add(-s.TargetCooldown))
+		// another A5 mode or Tab limit is another scan, not the cooldown result
+		if found && prev.KeyboardAllPages == req.KeyboardAllPages && prev.KeyboardMaxPresses == presses {
 			writeJSON(w, http.StatusOK, toStatus(prev))
 			return
 		}
@@ -190,6 +209,7 @@ func (s *Server) createScan(w http.ResponseWriter, r *http.Request) {
 	sc := scan.Scan{
 		ID: id, Host: host, TargetKey: target, StartURL: u.String(), Areas: areas, Status: scan.Queued,
 		PreviousScanID: req.PreviousScanID, CreatedAt: now, ExpiresAt: now.Add(scan.Retention),
+		KeyboardAllPages: req.KeyboardAllPages, KeyboardMaxPresses: presses,
 	}
 	if err := s.Store.Create(sc); err != nil {
 		s.Limiter.Release(key)

@@ -143,6 +143,8 @@ func main() {
 		Rules:     allRules,
 		Release:   limiter.Release,
 		Timeout:   5 * time.Minute, // C-1
+		// C-1: A5 mode "alle Seiten"
+		TimeoutAllPages: 10 * time.Minute,
 	}
 	for i := 0; i < 2; i++ {
 		go runner.Loop(ctx, jobs)
