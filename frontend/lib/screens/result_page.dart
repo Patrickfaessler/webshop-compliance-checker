@@ -205,7 +205,8 @@ class _ResultPageState extends State<ResultPage> {
         const SizedBox(height: 8),
         if (f.findings.isEmpty)
           const Text('Es wurden keine Probleme gefunden.'),
-        for (final x in f.findings) _FindingTile(finding: x),
+        for (final x in f.findings)
+          _FindingTile(finding: x, scanId: widget.scanId),
       ],
       const SizedBox(height: 32),
       Text(s.disclaimerDe ?? disclaimerDe, style: theme.textTheme.bodySmall),
@@ -355,15 +356,18 @@ class _RuleTile extends StatelessWidget {
 }
 
 class _FindingTile extends StatelessWidget {
-  const _FindingTile({required this.finding});
+  const _FindingTile({required this.finding, required this.scanId});
 
   final Finding finding;
+  final String scanId;
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     return Card(
       child: ListTile(
+        onTap: () => context.go('/r/$scanId/f/${finding.id}'), // F8 detail page
+        trailing: const Icon(Icons.chevron_right),
         title: Text(
             '${severityLabelDe(finding.severity)} · ${finding.ruleId} ${ruleNameDe(finding.ruleId)}'),
         subtitle: Column(

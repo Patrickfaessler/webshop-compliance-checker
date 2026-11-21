@@ -80,13 +80,37 @@ class RuleResult {
       );
 }
 
+/// A suggested fix (F8, D-3); [origin] is `template` or `ai`.
+class FindingFix {
+  const FindingFix(
+      {required this.origin, required this.textDe, this.code, this.noteDe});
+
+  final String origin;
+  final String textDe;
+  final String? code;
+  final String? noteDe;
+
+  factory FindingFix.fromJson(Map<String, dynamic> j) => FindingFix(
+        origin: (j['origin'] as String?) ?? 'template',
+        textDe: (j['textDe'] as String?) ?? '',
+        code: j['code'] as String?,
+        noteDe: j['noteDe'] as String?,
+      );
+}
+
 class Finding {
   const Finding(
       {required this.id,
       required this.ruleId,
       required this.severity,
       required this.url,
-      required this.summaryDe});
+      required this.summaryDe,
+      this.selector = '',
+      this.snippet = '',
+      this.sub,
+      this.explanationDe = '',
+      this.hasCrop = false,
+      this.fix});
 
   final String id;
   final String ruleId;
@@ -94,12 +118,28 @@ class Finding {
   final String url;
   final String summaryDe;
 
+  /// Detail fields for the finding page (F8).
+  final String selector;
+  final String snippet;
+  final String? sub;
+  final String explanationDe;
+  final bool hasCrop;
+  final FindingFix? fix;
+
   factory Finding.fromJson(Map<String, dynamic> j) => Finding(
         id: j['id'] as String,
         ruleId: j['ruleId'] as String,
         severity: j['severity'] as String,
         url: (j['url'] as String?) ?? '',
         summaryDe: (j['summaryDe'] as String?) ?? '',
+        selector: (j['selector'] as String?) ?? '',
+        snippet: (j['snippet'] as String?) ?? '',
+        sub: j['sub'] as String?,
+        explanationDe: (j['explanationDe'] as String?) ?? '',
+        hasCrop: (j['hasCrop'] as bool?) ?? false,
+        fix: j['fix'] is Map<String, dynamic>
+            ? FindingFix.fromJson(j['fix'] as Map<String, dynamic>)
+            : null,
       );
 }
 
@@ -141,6 +181,9 @@ abstract class ApiClient {
 
   /// Download URL of the finished report; [ext] is `pdf` or `json` (F10, F13).
   Uri reportUri(String id, String ext);
+
+  /// Screenshot crop around a finding's element (F8).
+  Uri cropUri(String scanId, String findingId);
 }
 
 const _apiBase =
@@ -157,6 +200,10 @@ class HttpApiClient implements ApiClient {
 
   final http.Client _http;
   final String _base;
+
+  @override
+  Uri cropUri(String scanId, String findingId) =>
+      Uri.parse('$_base/api/scans/$scanId/findings/$findingId/crop.jpg');
 
   @override
   Future<ScanStatus> createScan(String url, List<String> areas,
