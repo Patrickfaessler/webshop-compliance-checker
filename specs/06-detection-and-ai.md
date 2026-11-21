@@ -11,7 +11,7 @@ Every rule that needs to understand text runs these stages in order and stops at
    Examples: legal-notice link texts, withdrawal terms, order-button phrases, reject/accept labels.
 3. **Pattern**: regex/validators (e-mail, EU VAT number formats per country, postal address heuristics, URL patterns).
 4. **Score**: each stage yields a confidence 0..1. Result is `confident` if ≥ 0.8 (threshold in config, tuned on the corpus).
-5. **Fallback (Claude)**: only if confidence < 0.8 **and** the rule's spec allows fallback (field `ai_fallback: yes`).
+5. **Fallback (Claude)**: only if confidence < 0.8 **and** the rule's spec allows fallback (field `ai_fallback: yes`). Not built yet (2026-11-21): rules return `not_assessable` with a German "bitte manuell prüfen" note.
 6. If the fallback also stays below threshold or is disabled → `not_assessable`.
 
 ## When Claude is allowed (D-2)
