@@ -89,6 +89,17 @@ type Finding struct {
 	SummaryDe string `json:"summaryDe"`
 	Position  string `json:"position,omitempty"` // RP-3: element, page, hidden, outside, not_found
 	Box       *Box   `json:"box,omitempty"`
+	// ExplanationDe and Fix come from the rule (F8, RP-13).
+	ExplanationDe string `json:"explanationDe,omitempty"`
+	Fix           *Fix   `json:"fix,omitempty"`
+}
+
+// Fix is a suggested fix; Origin is "template" until AI suggestions exist (D-3).
+type Fix struct {
+	Origin string `json:"origin"`
+	TextDe string `json:"textDe"`
+	Code   string `json:"code,omitempty"`
+	NoteDe string `json:"noteDe,omitempty"`
 }
 
 // Build turns a finished scan into a report. metas supplies German names and severities per rule id.
@@ -126,6 +137,10 @@ func Build(sc scan.Scan, metas map[string]rules.Meta, now time.Time) (Report, er
 		rf := Finding{
 			ID: f.ID, RuleID: f.RuleID, Severity: string(f.Severity), URL: f.URL, Selector: f.Selector,
 			Snippet: f.Snippet, Sub: f.Sub, SummaryDe: f.SummaryDe, Position: f.Position,
+			ExplanationDe: f.ExplanationDe,
+		}
+		if f.Fix != nil {
+			rf.Fix = &Fix{Origin: "template", TextDe: f.Fix.TextDe, Code: f.Fix.Code, NoteDe: f.Fix.NoteDe}
 		}
 		if f.Box != nil {
 			rf.Box = &Box{X: f.Box.X, Y: f.Box.Y, Width: f.Box.Width, Height: f.Box.Height}

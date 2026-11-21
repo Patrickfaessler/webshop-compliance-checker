@@ -44,9 +44,18 @@ class FakeApi implements ApiClient {
   Uri reportUri(String id, String ext) =>
       Uri.parse('http://api.test/api/scans/$id/report.$ext');
 
+  /// Thrown by [getFindings] when set (e.g. an expired scan).
+  ApiException? findingsError;
+
   @override
-  Future<ScanFindings> getFindings(String id) async =>
-      findings ?? const ScanFindings(ruleResults: [], findings: []);
+  Future<ScanFindings> getFindings(String id) async {
+    if (findingsError != null) throw findingsError!;
+    return findings ?? const ScanFindings(ruleResults: [], findings: []);
+  }
+
+  @override
+  Uri cropUri(String scanId, String findingId) => Uri.parse(
+      'http://api.test/api/scans/$scanId/findings/$findingId/crop.jpg');
 }
 
 ScanStatus statusOf(

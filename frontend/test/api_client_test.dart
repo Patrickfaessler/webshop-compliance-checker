@@ -142,4 +142,36 @@ void main() {
     expect(RuleResult.fromJson({'ruleId': 'A6', 'state': 'passed'}).noteDe,
         isNull);
   });
+
+  // Spec: F8 — findings carry detail fields and the fix; old JSON without them still parses.
+  test('Finding parses detail fields and fix', () {
+    final f = Finding.fromJson({
+      'id': 'f1',
+      'ruleId': 'A3',
+      'severity': 'critical',
+      'url': 'u',
+      'summaryDe': 's',
+      'selector': '#plz',
+      'snippet': '<input>',
+      'sub': 'placeholder-only',
+      'explanationDe': 'e',
+      'hasCrop': true,
+      'fix': {'origin': 'template', 'textDe': 't', 'code': 'c', 'noteDe': 'n'},
+    });
+    expect(f.selector, '#plz');
+    expect(f.snippet, '<input>');
+    expect(f.explanationDe, 'e');
+    expect(f.hasCrop, isTrue);
+    expect(f.fix!.origin, 'template');
+    expect(f.fix!.textDe, 't');
+    expect(f.fix!.code, 'c');
+    expect(f.fix!.noteDe, 'n');
+    final old =
+        Finding.fromJson({'id': 'f1', 'ruleId': 'A3', 'severity': 'critical'});
+    expect(old.fix, isNull);
+    expect(old.hasCrop, isFalse);
+    expect(old.selector, '');
+    expect(HttpApiClient(baseUrl: 'http://x').cropUri('s1', 'f1').toString(),
+        'http://x/api/scans/s1/findings/f1/crop.jpg');
+  });
 }

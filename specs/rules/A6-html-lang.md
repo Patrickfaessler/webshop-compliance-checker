@@ -1,6 +1,6 @@
 # A6 Page language declared
 
-- **Status:** verified (2026-11-05): unit tests A6-1..A6-4 and corpus (3 defect + 3 clean cases, recall 3/3, 0 false alarms) pass. Code: `backend/internal/rules/a6`. Wired to the crawler and API; live-tested.
+- **Status:** verified (2026-11-05): unit tests A6-1..A6-4 and corpus (3 defect + 3 clean cases, recall 3/3, 0 false alarms) pass. Code: `backend/internal/rules/a6`. Wired to the crawler and API; live-tested. Fix templates implemented and tested (2026-11-21, A6-F; code in `backend/internal/fixes` and the rule).
 - **legal-checked:** n/a
 - **Area:** accessibility
 - **Severity:** notice
@@ -32,11 +32,12 @@ URL, selector `html`, snippet = opening `<html …>` tag.
 Die Seite sagt nicht, in welcher Sprache sie geschrieben ist. Screenreader wissen dann nicht, wie sie den Text aussprechen sollen.
 
 ## Fix templates
-- `Setze das Attribut lang im html-Element: <html lang="{{lang}}">`. `{{lang}}` is guessed from the visible text by a deterministic detector; if unsure, the template shows `de` with the note "bitte anpassen".
+- Text `Setze das Attribut lang im html-Element.`, code `<html lang="{{lang}}">`. `{{lang}}` is guessed from the visible text by a deterministic stopword detector (de, en, fr, it, es, nl; sure = top language ≥ 8 hits and ≥ 2× the second); if unsure, `de` with the note `Sprache bitte anpassen.`
 
 ## Acceptance
 - A6-1: `<html lang="de">` passes.
 - A6-2: `<html>` without lang fails with selector `html`.
 - A6-3: `lang=""` and `lang="deutsch"` fail.
 - A6-4: `lang="de-AT"` passes.
+- A6-F: every finding carries a fix (origin `template`, non-empty German text); page values in the code are HTML-escaped.
 - Corpus cases: `testcorpus/cases/a6-has-lang`, `a6-missing-lang` (more to add).

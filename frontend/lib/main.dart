@@ -3,6 +3,7 @@ import 'package:flutter_web_plugins/url_strategy.dart';
 import 'package:go_router/go_router.dart';
 
 import 'api/api_client.dart';
+import 'screens/finding_page.dart';
 import 'screens/result_page.dart';
 import 'screens/start_page.dart';
 
@@ -31,6 +32,14 @@ class _AppState extends State<App> {
           api: widget.api,
           scanId: state.pathParameters['id']!,
           onDownload: widget.onDownload,
+        ),
+      ),
+      GoRoute(
+        path: '/r/:id/f/:fid',
+        builder: (_, state) => FindingPage(
+          api: widget.api,
+          scanId: state.pathParameters['id']!,
+          findingId: state.pathParameters['fid']!,
         ),
       ),
     ],

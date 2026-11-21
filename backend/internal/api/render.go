@@ -25,7 +25,8 @@ type rendered struct {
 	added   time.Time
 	expires time.Time
 	html    []byte
-	pdf     []byte // nil until printed
+	pdf     []byte            // nil until printed
+	crops   map[string][]byte // finding id → JPEG crop (F8); nil until first requested
 }
 
 // renderCache keeps rendered reports for at most the scan retention and at most maxCachedReports scans.
@@ -148,4 +149,22 @@ func (s *Server) printedPDF(ctx context.Context, sc scan.Scan, rep report.Report
 func (s *Server) printSlots() chan struct{} {
 	s.printOnce.Do(func() { s.prints = make(chan struct{}, maxPrints) })
 	return s.prints
+}
+
+// cachedCrop returns the crop of one finding; all crops of the scan are cut once (F8, RP-12).
+func (s *Server) cachedCrop(ctx context.Context, sc scan.Scan, findingID string) ([]byte, bool) {
+	if sc.Status != scan.Done && sc.Status != scan.Incomplete { // not final yet: do not cache
+		b, ok := report.FindingCrops(sc)[findingID]
+		return b, ok
+	}
+	e := s.renders.entry(sc, s.now())
+	if !e.acquire(ctx) {
+		return nil, false
+	}
+	defer e.release()
+	if e.crops == nil {
+		e.crops = report.FindingCrops(sc)
+	}
+	b, ok := e.crops[findingID]
+	return b, ok
 }

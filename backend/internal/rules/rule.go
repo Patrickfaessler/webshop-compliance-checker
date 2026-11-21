@@ -56,6 +56,8 @@ type Meta struct {
 	Severity   Severity
 	AIFallback bool   // whether the rule spec allows the Claude fallback
 	SummaryDe  string // one-line German summary shown in the findings list
+	// ExplanationDe is the German explanation from the rule spec, shown in the finding detail (F8).
+	ExplanationDe string
 }
 
 // Page is one crawled, rendered page.
@@ -115,6 +117,15 @@ type Finding struct {
 	Snippet  string
 	Evidence string // quoted source text, required for AI-derived results (D-5)
 	Sub      string // sub-rule name, e.g. "skipped-level" (A4); optional
+	Fix      *Fix   // suggested fix from the rule's template (F8, D-3); nil if the rule has none
+}
+
+// Fix is a suggested correction built from a rule's fix template (D-3). Values taken from the page are
+// HTML-escaped in Code (see package fixes). The origin is "template".
+type Fix struct {
+	TextDe string // German instruction
+	Code   string // optional code to copy
+	NoteDe string // optional German note, e.g. "bitte anpassen"
 }
 
 // Result is the outcome of one rule for one scan.

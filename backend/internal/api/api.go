@@ -72,6 +72,7 @@ func (s *Server) Handler() http.Handler {
 	mux.HandleFunc("POST /api/scans", s.createScan)
 	mux.HandleFunc("GET /api/scans/{id}", s.getScan)
 	mux.HandleFunc("GET /api/scans/{id}/findings", s.getFindings)
+	mux.HandleFunc("GET /api/scans/{id}/findings/{findingId}/crop.jpg", s.findingCrop)
 	mux.HandleFunc("GET /api/scans/{id}/report.json", s.reportJSON)
 	mux.HandleFunc("GET /api/scans/{id}/report.pdf", s.reportPDF)
 	mux.HandleFunc("GET /api/scans/{id}/report.html", s.reportHTML)
@@ -134,6 +135,28 @@ type findingJSON struct {
 	Severity  string `json:"severity"`
 	URL       string `json:"url"`
 	SummaryDe string `json:"summaryDe"`
+	// detail fields (F8)
+	Selector      string   `json:"selector"`
+	Snippet       string   `json:"snippet"`
+	Sub           string   `json:"sub,omitempty"`
+	ExplanationDe string   `json:"explanationDe"`
+	HasCrop       bool     `json:"hasCrop"`
+	Fix           *fixJSON `json:"fix,omitempty"`
+}
+
+// fixJSON is a suggested fix (08-api Suggestion). Origin is "template" until AI suggestions exist (D-3).
+type fixJSON struct {
+	Origin string `json:"origin"`
+	TextDe string `json:"textDe"`
+	Code   string `json:"code,omitempty"`
+	NoteDe string `json:"noteDe,omitempty"`
+}
+
+func toFixJSON(f *rules.Fix) *fixJSON {
+	if f == nil {
+		return nil
+	}
+	return &fixJSON{Origin: "template", TextDe: f.TextDe, Code: f.Code, NoteDe: f.NoteDe}
 }
 
 func toStatus(sc scan.Scan) scanStatus {
@@ -264,9 +287,28 @@ func (s *Server) getFindings(w http.ResponseWriter, r *http.Request) {
 		}
 		out.Findings = append(out.Findings, findingJSON{
 			ID: f.ID, RuleID: f.RuleID, Severity: string(f.Severity), URL: f.URL, SummaryDe: f.SummaryDe,
+			Selector: f.Selector, Snippet: f.Snippet, Sub: f.Sub, ExplanationDe: f.ExplanationDe,
+			HasCrop: report.HasCrop(sc, f), Fix: toFixJSON(f.Fix),
 		})
 	}
 	writeJSON(w, http.StatusOK, out)
+}
+
+// findingCrop serves the screenshot crop around a finding's element (F8).
+func (s *Server) findingCrop(w http.ResponseWriter, r *http.Request) {
+	sc, ok := s.Store.Get(r.PathValue("id"))
+	if !ok {
+		problem(w, http.StatusNotFound, notFoundDe, 0)
+		return
+	}
+	img, ok := s.cachedCrop(r.Context(), sc, r.PathValue("findingId"))
+	if !ok {
+		problem(w, http.StatusNotFound, "Für diese Fundstelle gibt es keinen Ausschnitt.", 0)
+		return
+	}
+	w.Header().Set("Content-Type", "image/jpeg")
+	w.Header().Set("Cache-Control", "private, max-age=3600")
+	_, _ = w.Write(img)
 }
 
 // ---- helpers ----

@@ -14,7 +14,11 @@ import (
 //   - else any "incomplete" result of the ids      -> not_assessable (axe could not decide)
 //   - else every page reports all ids inapplicable -> not_applicable
 //   - else                                          -> passed
-func Check(ids []string, in rules.Input) rules.Result {
+//
+// FixFunc builds the fix for one flagged axe node (F8); nil means no fix.
+type FixFunc func(p rules.Page, n rules.AxeNode) *rules.Fix
+
+func Check(ids []string, in rules.Input, fix FixFunc) rules.Result {
 	res := rules.Result{DecidedBy: rules.DecidedStructural}
 
 	withAxe, incomplete := 0, false
@@ -29,9 +33,11 @@ func Check(ids []string, in rules.Input) rules.Result {
 				continue
 			}
 			for _, n := range v.Nodes {
-				res.Findings = append(res.Findings, rules.Finding{
-					PageURL: p.URL, Selector: n.Selector, Snippet: n.HTML, Sub: v.ID,
-				})
+				f := rules.Finding{PageURL: p.URL, Selector: n.Selector, Snippet: n.HTML, Sub: v.ID}
+				if fix != nil {
+					f.Fix = fix(p, n)
+				}
+				res.Findings = append(res.Findings, f)
 			}
 		}
 		for _, v := range p.Axe.Incomplete {

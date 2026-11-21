@@ -115,15 +115,17 @@ func (r *Runner) Run(ctx context.Context, job Job) {
 		for i, f := range res.Findings {
 			affected[f.PageURL] = struct{}{}
 			findings = append(findings, scan.Finding{
-				ID:        fmt.Sprintf("%s-%s-%d", job.ScanID, m.ID, i+1),
-				RuleID:    m.ID,
-				Severity:  m.Severity,
-				URL:       f.PageURL,
-				Selector:  f.Selector,
-				Snippet:   f.Snippet,
-				Evidence:  f.Evidence,
-				Sub:       f.Sub,
-				SummaryDe: m.SummaryDe,
+				ID:            fmt.Sprintf("%s-%s-%d", job.ScanID, m.ID, i+1),
+				RuleID:        m.ID,
+				Severity:      m.Severity,
+				URL:           f.PageURL,
+				Selector:      f.Selector,
+				Snippet:       f.Snippet,
+				Evidence:      f.Evidence,
+				Sub:           f.Sub,
+				SummaryDe:     m.SummaryDe,
+				Fix:           f.Fix,
+				ExplanationDe: m.ExplanationDe,
 			})
 		}
 		results = append(results, scan.RuleResult{

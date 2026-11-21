@@ -10,6 +10,8 @@ import (
 	"image/jpeg"
 	"math"
 	"strings"
+
+	"compliancechecker/internal/scan"
 )
 
 // The visual report (specs/11-report.md RP-5 … RP-9): one self-contained HTML file, no script, images as data URIs.
@@ -74,6 +76,7 @@ type cardView struct {
 	CropSrc                                  template.URL
 	CropMark                                 markView
 	CropAlt                                  string
+	Fix                                      *Fix
 }
 
 // HTML renders the visual report (F14). The result contains no script and no external resources (RP-5).
@@ -174,7 +177,7 @@ func (r Report) sections(names map[string]string) ([]sectionView, bool) {
 			n++
 			c := cardView{
 				N: n, RuleID: f.RuleID, NameDe: names[f.RuleID], SeverityDe: severityDe(f.Severity), SevClass: sevClass(f.Severity),
-				Summary: f.SummaryDe, URL: f.URL, Selector: f.Selector, Snippet: truncate(f.Snippet, 400),
+				Summary: f.SummaryDe, URL: f.URL, Selector: f.Selector, Snippet: truncate(f.Snippet, 400), Fix: f.Fix,
 				PosNote: positionNoteDe(f.Position, sec.HasShot),
 			}
 			if sec.HasShot && f.Position == "element" && f.Box != nil {
@@ -256,6 +259,58 @@ func markIn(b Box, w, h float64) markView {
 // crop cuts the area around a box out of the screenshot (with some margin) and returns it with the box position
 // inside the crop. pageW is the screenshot width in CSS px; the image may have more pixels (device scale).
 func crop(img image.Image, b Box, pageW float64) (template.URL, markView, bool) {
+	return cropTo(img, b, pageW, nil)
+}
+
+// CropJPEG returns the same crop as the HTML report shows, as JPEG bytes (F8, app detail page).
+func CropJPEG(img image.Image, b Box, pageW float64) ([]byte, bool) {
+	var out []byte
+	_, _, ok := cropTo(img, b, pageW, &out)
+	return out, ok
+}
+
+// FindingCrops crops the element of every finding that has a box on a captured page, decoding each page
+// screenshot once (F8). The map is keyed by finding id.
+func FindingCrops(sc scan.Scan) map[string][]byte {
+	out := map[string][]byte{}
+	for _, sh := range sc.Shots {
+		if len(sh.Image) == 0 || sh.Width <= 0 {
+			continue
+		}
+		var img image.Image
+		for _, f := range sc.Findings {
+			if f.URL != sh.URL || f.Box == nil || f.Position != "element" {
+				continue
+			}
+			if img == nil {
+				decoded, err := jpeg.Decode(bytes.NewReader(sh.Image))
+				if err != nil {
+					break
+				}
+				img = decoded
+			}
+			if b, ok := CropJPEG(img, Box{X: f.Box.X, Y: f.Box.Y, Width: f.Box.Width, Height: f.Box.Height}, float64(sh.Width)); ok {
+				out[f.ID] = b
+			}
+		}
+	}
+	return out
+}
+
+// HasCrop says whether FindingCrop can produce an image for f, without decoding.
+func HasCrop(sc scan.Scan, f scan.Finding) bool {
+	if f.Box == nil || f.Position != "element" {
+		return false
+	}
+	for _, sh := range sc.Shots {
+		if sh.URL == f.URL && len(sh.Image) > 0 && sh.Width > 0 {
+			return true
+		}
+	}
+	return false
+}
+
+func cropTo(img image.Image, b Box, pageW float64, cropOut *[]byte) (template.URL, markView, bool) {
 	bounds := img.Bounds()
 	if pageW <= 0 || bounds.Dx() == 0 {
 		return "", markView{}, false
@@ -285,6 +340,9 @@ func crop(img image.Image, b Box, pageW float64) (template.URL, markView, bool) 
 	var buf bytes.Buffer
 	if err := jpeg.Encode(&buf, sub.SubImage(r), &jpeg.Options{Quality: 80}); err != nil {
 		return "", markView{}, false
+	}
+	if cropOut != nil {
+		*cropOut = buf.Bytes()
 	}
 	// box relative to the crop, in CSS px
 	cx0, cy0 := float64(r.Min.X)/scale, float64(r.Min.Y)/scale

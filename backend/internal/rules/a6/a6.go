@@ -9,6 +9,8 @@ import (
 
 	"golang.org/x/net/html"
 
+	"compliancechecker/internal/domutil"
+	"compliancechecker/internal/fixes"
 	"compliancechecker/internal/rules"
 )
 
@@ -25,13 +27,14 @@ func New() Rule { return Rule{} }
 // Meta implements rules.Rule.
 func (Rule) Meta() rules.Meta {
 	return rules.Meta{
-		ID:         "A6",
-		Name:       "Page language declared",
-		NameDe:     "Seitensprache angegeben",
-		Area:       "accessibility",
-		Severity:   rules.Notice,
-		AIFallback: false,
-		SummaryDe:  "Die Seite gibt ihre Sprache nicht an (lang-Attribut fehlt oder ist ungültig).",
+		ID:            "A6",
+		Name:          "Page language declared",
+		NameDe:        "Seitensprache angegeben",
+		Area:          "accessibility",
+		Severity:      rules.Notice,
+		AIFallback:    false,
+		SummaryDe:     "Die Seite gibt ihre Sprache nicht an (lang-Attribut fehlt oder ist ungültig).",
+		ExplanationDe: "Die Seite sagt nicht, in welcher Sprache sie geschrieben ist. Screenreader wissen dann nicht, wie sie den Text aussprechen sollen.",
 	}
 }
 
@@ -52,6 +55,7 @@ func (Rule) Check(_ context.Context, in rules.Input) (rules.Result, error) {
 				PageURL:  p.URL,
 				Selector: "html",
 				Snippet:  openingTag(htmlEl),
+				Fix:      langFix(htmlEl),
 			})
 		}
 	}
@@ -117,4 +121,15 @@ func openingTag(n *html.Node) string {
 	}
 	b.WriteString(">")
 	return b.String()
+}
+
+// langFix suggests the lang attribute from the page text (spec A6 "Fix templates").
+func langFix(htmlEl *html.Node) *rules.Fix {
+	lang, sure := fixes.DetectLang(domutil.VisibleText(htmlEl))
+	f := &rules.Fix{TextDe: "Setze das Attribut lang im html-Element."}
+	if !sure {
+		lang, f.NoteDe = "de", "Sprache bitte anpassen."
+	}
+	f.Code = fixes.Fill(`<html lang="{{lang}}">`, map[string]string{"lang": lang})
+	return f
 }

@@ -52,7 +52,8 @@ func scanShop(t *testing.T, ctx context.Context, c *crawler.Crawler, base, path 
 		for i, f := range out.Findings {
 			pages[f.PageURL] = true
 			sc.Findings = append(sc.Findings, scan.Finding{ID: fmt.Sprintf("%s-%d", m.ID, i), RuleID: m.ID, Severity: m.Severity,
-				URL: f.PageURL, Selector: f.Selector, Snippet: f.Snippet, Sub: f.Sub, SummaryDe: m.SummaryDe})
+				URL: f.PageURL, Selector: f.Selector, Snippet: f.Snippet, Sub: f.Sub, SummaryDe: m.SummaryDe,
+				Fix: f.Fix, ExplanationDe: m.ExplanationDe})
 		}
 		sc.RuleResults = append(sc.RuleResults, scan.RuleResult{RuleID: m.ID, State: out.State, DecidedBy: out.DecidedBy, PagesAffected: len(pages)})
 		outcomes = append(outcomes, scoring.Outcome{Severity: m.Severity, State: out.State})
@@ -154,6 +155,16 @@ func TestShopReports(t *testing.T) {
 				t.Errorf("frames in report = %d, want %d", n, elements)
 			}
 
+			// Spec: A1-F…A6-F, RP-13 — every finding carries a fix and every card shows the fix block;
+			// the self-scan below then also covers the fix blocks.
+			for _, f := range sc.Findings {
+				if f.Fix == nil || f.Fix.TextDe == "" {
+					t.Errorf("%s %s on %s: no fix", f.RuleID, f.Selector, f.URL)
+				}
+			}
+			if cards, fixes := strings.Count(string(doc), `<li class="card"`), strings.Count(string(doc), `class="fix"`); cards == 0 || fixes != cards {
+				t.Errorf("fix blocks = %d, cards = %d", fixes, cards)
+			}
 			selfScan(t, ctx, c, doc)
 
 			if dir := os.Getenv("REPORT_OUT"); dir != "" {

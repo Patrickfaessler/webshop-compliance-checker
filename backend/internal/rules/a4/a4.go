@@ -19,7 +19,8 @@ func New() Rule { return Rule{} }
 func (Rule) Meta() rules.Meta {
 	return rules.Meta{
 		ID: "A4", Name: "Heading structure", NameDe: "Überschriftenstruktur", Area: "accessibility", Severity: rules.Warning,
-		SummaryDe: "Die Überschriften der Seite sind nicht sauber gegliedert.",
+		SummaryDe:     "Die Überschriften der Seite sind nicht sauber gegliedert.",
+		ExplanationDe: "Überschriften gliedern die Seite wie ein Inhaltsverzeichnis. Screenreader-Nutzer springen damit durch die Seite; fehlende oder übersprungene Ebenen machen das schwer.",
 	}
 }
 
@@ -76,8 +77,8 @@ func checkPage(p rules.Page, doc *html.Node) []rules.Finding {
 	})
 
 	var out []rules.Finding
-	add := func(n *html.Node, sub string) {
-		out = append(out, rules.Finding{PageURL: p.URL, Selector: domutil.Selector(n), Snippet: domutil.OpeningTag(n), Sub: sub})
+	add := func(n *html.Node, sub string, fix *rules.Fix) {
+		out = append(out, rules.Finding{PageURL: p.URL, Selector: domutil.Selector(n), Snippet: domutil.OpeningTag(n), Sub: sub, Fix: fix})
 	}
 
 	h1s := 0
@@ -85,19 +86,20 @@ func checkPage(p rules.Page, doc *html.Node) []rules.Finding {
 		if h.level == 1 {
 			h1s++
 			if h1s > 1 {
-				add(h.node, "multi-h1")
+				add(h.node, "multi-h1", &rules.Fix{TextDe: "Behalte nur eine <h1> und mache die anderen zu <h2>."})
 			}
 		}
 		if i > 0 && h.level > hs[i-1].level+1 {
-			add(h.node, "skipped-level")
+			add(h.node, "skipped-level", &rules.Fix{TextDe: "Ändere <h" + strconv.Itoa(h.level) + "> zu <h" + strconv.Itoa(hs[i-1].level+1) + ">."})
 		}
 		if isEmpty(h.node) {
-			add(h.node, "empty")
+			add(h.node, "empty", &rules.Fix{TextDe: "Gib der Überschrift einen Text oder entferne das leere Element."})
 		}
 	}
 	if h1s == 0 {
 		out = append(out, rules.Finding{
 			PageURL: p.URL, Selector: "html", Snippet: "Keine h1-Überschrift gefunden", Sub: "no-h1",
+			Fix: &rules.Fix{TextDe: "Füge genau eine <h1> mit dem Seitentitel hinzu."},
 		})
 	}
 	return out

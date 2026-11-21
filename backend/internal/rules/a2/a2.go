@@ -9,6 +9,7 @@ import (
 	"golang.org/x/net/html"
 
 	"compliancechecker/internal/domutil"
+	"compliancechecker/internal/fixes"
 	"compliancechecker/internal/rules"
 	"compliancechecker/internal/rules/axecheck"
 )
@@ -28,13 +29,23 @@ func New() Rule { return Rule{} }
 func (Rule) Meta() rules.Meta {
 	return rules.Meta{
 		ID: "A2", Name: "Alternative text for images", NameDe: "Alternativtexte für Bilder", Area: "accessibility", Severity: rules.Warning,
-		SummaryDe: "Ein Bild hat keinen brauchbaren Alternativtext.",
+		SummaryDe:     "Ein Bild hat keinen brauchbaren Alternativtext.",
+		ExplanationDe: "Bilder ohne Beschreibung sind für blinde Menschen unsichtbar. Jedes inhaltliche Bild braucht einen kurzen Alternativtext.",
 	}
 }
 
 // Check combines axe-core (missing alt) with a DOM check for file-name alt texts (A2-3).
 func (Rule) Check(_ context.Context, in rules.Input) (rules.Result, error) {
-	res := axecheck.Check(axeIDs, in)
+	docs := map[string]*html.Node{} // parsed once per page for the fixes
+	res := axecheck.Check(axeIDs, in, func(p rules.Page, n rules.AxeNode) *rules.Fix {
+		if docs[p.URL] == nil {
+			docs[p.URL] = domutil.Parse(p.HTML)
+		}
+		if t := fixes.Tag(n.HTML); t != nil && domutil.IsElement(t, "svg") {
+			return svgFix()
+		}
+		return fixFor(imgBySrc(docs[p.URL], n.HTML))
+	})
 	for _, p := range in.Pages {
 		res.Findings = append(res.Findings, fileNameFindings(p)...)
 	}
@@ -55,7 +66,7 @@ func fileNameFindings(p rules.Page) []rules.Finding {
 		alt = strings.TrimSpace(alt)
 		if ok && alt != "" && (fileNameAlt.MatchString(alt) || cameraAlt.MatchString(alt)) {
 			out = append(out, rules.Finding{
-				PageURL: p.URL, Selector: domutil.Selector(n), Snippet: domutil.OpeningTag(n), Sub: "filename-alt",
+				PageURL: p.URL, Selector: domutil.Selector(n), Snippet: domutil.OpeningTag(n), Sub: "filename-alt", Fix: fixFor(n),
 			})
 		}
 		return true

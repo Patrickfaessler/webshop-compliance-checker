@@ -47,6 +47,9 @@ type Finding struct {
 	Evidence  string
 	Sub       string // sub-rule, e.g. "skipped-level"
 	SummaryDe string
+	// Fix and ExplanationDe come from the rule (F8). Not persisted by the PostgreSQL store.
+	Fix           *rules.Fix
+	ExplanationDe string
 	// Position and Box locate the element on the page screenshot (specs/11-report.md RP-3).
 	// Position is "" when the page was not captured. Not persisted by the PostgreSQL store.
 	Position string

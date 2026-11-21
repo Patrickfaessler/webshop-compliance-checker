@@ -56,20 +56,18 @@ paths:
                   findings:
                     type: array
                     items: { $ref: '#/components/schemas/Finding' }
-  /api/findings/{id}:
+  /api/scans/{id}/findings/{findingId}/crop.jpg:
     get:
-      summary: Finding detail with location and screenshot (F8)
-      parameters: [ { name: id, in: path, required: true, schema: { type: string } } ]
+      summary: Cropped screenshot around the finding's element (F8)
+      description: Finding ids are unique only within a scan and there is no global store (ADR-6), so finding routes are scan-scoped. The finding detail itself is part of GET /api/scans/{id}/findings.
+      parameters: [ { $ref: '#/components/parameters/ScanId' }, { name: findingId, in: path, required: true, schema: { type: string } } ]
       responses:
-        '200':
-          description: OK
-          content:
-            application/json:
-              schema: { $ref: '#/components/schemas/FindingDetail' }
-  /api/findings/{id}/suggestion:
+        '200': { description: OK, content: { image/jpeg: {} } }
+        '404': { description: unknown or expired scan, unknown finding, or no screenshot for this finding }
+  /api/scans/{id}/findings/{findingId}/suggestion:
     post:
-      summary: Get fix suggestion (template first, Claude only if no template, D-3)
-      parameters: [ { name: id, in: path, required: true, schema: { type: string } } ]
+      summary: AI fix suggestion when no template fits (D-3). Not implemented yet (AI comes later).
+      parameters: [ { $ref: '#/components/parameters/ScanId' }, { name: findingId, in: path, required: true, schema: { type: string } } ]
       responses:
         '200':
           description: OK
@@ -181,6 +179,12 @@ components:
         severity: { type: string, enum: [critical, warning, notice] }
         url: { type: string }
         summaryDe: { type: string }
+        selector: { type: string }
+        snippet: { type: string }
+        sub: { type: string, nullable: true }
+        explanationDe: { type: string }
+        hasCrop: { type: boolean, description: 'true when GET …/findings/{findingId}/crop.jpg has an image' }
+        fix: { $ref: '#/components/schemas/Suggestion' }
     FindingDetail:
       allOf:
         - $ref: '#/components/schemas/Finding'
@@ -257,4 +261,5 @@ components:
         origin: { type: string, enum: [template, ai] }
         textDe: { type: string }
         code: { type: string, nullable: true }
+        noteDe: { type: string, nullable: true }
         reviewNoticeDe: { type: string, nullable: true, description: 'set when origin = ai' }

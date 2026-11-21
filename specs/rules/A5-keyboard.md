@@ -1,6 +1,6 @@
 # A5 Keyboard operation
 
-- **Status:** verified (2026-11-21): unit tests (rule mapping A5-7, page types A5-5/A5-6, probe fixtures A5-1…A5-4, A5-9, cap), corpus 3 defect + 1 clean (recall 3/3, 0 false alarms), test shops (Radwerk planted defects found, Teehaus/Seifen pass). Limitations: delegated click handlers on ancestors and broken arrow keys inside radio groups are not detected. Code: `backend/internal/crawler/keyboard*.go`, `backend/internal/rules/a5`. Fix templates not yet implemented. · **legal-checked:** n/a · **Area:** accessibility · **Severity:** critical
+- **Status:** verified (2026-11-21): unit tests (rule mapping A5-7, page types A5-5/A5-6, probe fixtures A5-1…A5-4, A5-9, cap), corpus 3 defect + 1 clean (recall 3/3, 0 false alarms), test shops (Radwerk planted defects found, Teehaus/Seifen pass). Limitations: delegated click handlers on ancestors and broken arrow keys inside radio groups are not detected. Code: `backend/internal/crawler/keyboard*.go`, `backend/internal/rules/a5`. Fix templates implemented and tested (2026-11-21, A5-F; code in `backend/internal/fixes` and the rule). · **legal-checked:** n/a · **Area:** accessibility · **Severity:** critical
 - **Basis:** WCAG 2.1 SC 2.1.1, 2.1.2, 2.4.7 (EN 301 549 clause 9.2.1.1, 9.2.1.2, 9.2.4.7). Custom rule: a keyboard
   probe in the crawl tab with chromedp and real CDP key events (`Input.dispatchKeyEvent`, ADR-4).
 - **applies_when:** page has interactive elements
@@ -72,7 +72,10 @@ URL, selector, sub-rule, snippet (opening tag).
 Nicht jeder kann eine Maus benutzen. Alle Bedienelemente müssen mit der Tab-Taste erreichbar sein und man muss sehen, wo man gerade ist.
 
 ## Fix templates
-`no-focus-style`: `{{selector}}:focus-visible { outline: 2px solid currentColor; outline-offset: 2px; }`; `not-focusable`: use `<button>` or add `role="button" tabindex="0"` plus key handler note.
+- `no-focus-style`: text `Mach sichtbar, welches Element den Fokus hat.`, code (selector inserted raw, it is CSS) `{{selector}}:focus-visible { outline: 2px solid currentColor; outline-offset: 2px; }`
+- `not-focusable`: text `Verwende ein <button>-Element. Alternativ role="button" und tabindex="0" ergänzen und Enter/Leertaste per Skript bedienen.`, code `<button type="button">…</button>`
+- `unreachable`: text `Mach das Element mit der Tab-Taste erreichbar: entferne tabindex="-1" oder Skripte, die den Fokus wegnehmen.`, no code
+- `keyboard-trap`: text `Sorge dafür, dass man das Element mit der Tab-Taste wieder verlassen kann.`, no code
 
 ## Acceptance
 - A5-1: link and button reachable → passes.
@@ -86,3 +89,4 @@ Nicht jeder kann eine Maus benutzen. Alle Bedienelemente müssen mit der Tab-Tas
 - A5-9: a probe error keeps the page (HTML, axe result) without a keyboard result. When the probe's time
   (30 s) runs out during the Tab loop, the presses so far count like a reached limit (A5-7, the note names the
   presses actually made).
+- A5-F: every finding carries a fix (origin `template`, non-empty German text); the selector goes into the CSS code unchanged (CSS, not HTML).
