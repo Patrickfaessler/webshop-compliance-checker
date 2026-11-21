@@ -15,10 +15,11 @@ Status column: draft / reviewed / implemented / verified (see `README.md`).
 | F7 | Report with score, severity, list of all findings | Must | Score reproducible from rule results (`04-scoring.md`) | draft |
 | F8 | Finding detail: explanation, location (URL + selector), screenshot, suggested fix | Must | Fix is copyable; its origin (`template` or `ai`) and evidence are visible | draft |
 | F9 | Re-scan from a result page with per-rule comparison | Later | **Postponed (ADR-6):** without stored scans there is nothing to compare; could later compare against an uploaded JSON report | draft |
-| F10 | Download the finished report as **PDF** (German) | Must | PDF has URL, date, score with its wording (S-3), all rule results, all findings with location, and the disclaimer from `01-legal-scope.md` on the first page. Raised from Should: the download is the only lasting copy (ADR-6) | draft |
+| F10 | Download the finished report as **PDF** (German) | Must | PDF has URL, date, score with its wording (S-3), all rule results, all findings with location, and the disclaimer from `01-legal-scope.md` on the first page. Raised from Should: the download is the only lasting copy (ADR-6). Printed from the HTML report when a browser is available, text PDF otherwise (ADR-7) | draft |
 | F11 | Result link `/r/{id}` readable by anyone who has it, while the scan is in memory | Must | ID has ≥ 128 bits of randomness; not listed anywhere; **expires 1 hour after the scan was created (ADR-6)**; the page tells the user until when and to download the report | draft |
 | F12 | Abuse protection without accounts | Must | Rate limits per IP and per target host as in `05-crawler.md` | draft |
 | F13 | Download the finished report as **JSON** | Must | Versioned format (`format`, `version`) with scan data, rule results and findings incl. selector and snippet; same content as the PDF | draft |
+| F14 | View and download the finished report as **HTML** with a screenshot of each affected page and the faulty elements marked (`11-report.md`) | Must | Every finding with a visible element has a numbered frame on the right page; frame and finding card link to each other; self-contained file without script; passes A1–A6 (RP-A2, RP-A3) | draft |
 
 Removed from V2: user accounts, scheduled scans, e-mail notifications (ADR-1). Not stored for now: scan results (ADR-6).
 

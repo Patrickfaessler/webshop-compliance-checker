@@ -33,6 +33,13 @@ type expectation struct {
 	Expected      map[string]string `json:"expected"`
 	ExpectedScore int               `json:"expectedScore"`
 	Pages         []string          `json:"pages"`
+	Planted       []planted         `json:"planted"`
+}
+
+// planted is one defect built into a test shop on purpose.
+type planted struct {
+	Page string `json:"page"`
+	Rule string `json:"rule"`
 }
 
 // allowLoopback lets the crawler reach the local test server; everything else stays blocked.

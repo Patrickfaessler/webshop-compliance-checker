@@ -38,6 +38,27 @@ void main() {
     ]);
   });
 
+  // Spec: F14, RP-5 — "Bericht ansehen" shows the HTML report, "Bericht als HTML" downloads it.
+  testWidgets('HTML report: view and download', (tester) async {
+    final opened = <Uri>[];
+    final api = FakeApi(statuses: [statusOf('new123', 'done', score: 100)]);
+    await openFinished(tester, api, (uri) async {
+      opened.add(uri);
+      return true;
+    });
+
+    await tester.tap(find.text('Bericht ansehen'));
+    await tester.pump();
+    await tester.tap(find.text('Bericht als HTML'));
+    await tester.pump();
+    expect(opened.map((u) => u.toString()), [
+      'http://api.test/api/scans/new123/report.html',
+      'http://api.test/api/scans/new123/report.html?download=1',
+    ]);
+    expect(isReportView(opened[0]), isTrue);
+    expect(isReportView(opened[1]), isFalse);
+  });
+
   // Spec: F10 — the user learns when a download cannot start.
   testWidgets('failed download shows a message', (tester) async {
     final api = FakeApi(statuses: [statusOf('new123', 'done', score: 100)]);

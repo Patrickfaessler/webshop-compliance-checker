@@ -12,11 +12,17 @@ import '../strings.dart';
 typedef Downloader = Future<bool> Function(Uri uri);
 
 /// Default downloader: the API answers with `Content-Disposition: attachment`, so opening the URL in the
-/// same tab downloads the file and the page stays where it is.
-Future<bool> launchDownload(Uri uri) =>
-    launchUrl(uri, webOnlyWindowName: '_self');
+/// same tab downloads the file and the page stays where it is. The visual HTML report without `download`
+/// is shown, so it opens in a new tab (F14).
+Future<bool> launchDownload(Uri uri) => launchUrl(uri,
+    webOnlyWindowName: isReportView(uri) ? '_blank' : '_self');
 
-/// Progress and report for one scan. Spec: F7 (score, severity, list), F10/F13 (downloads),
+/// True for the HTML report URL that shows the report instead of downloading it.
+bool isReportView(Uri uri) =>
+    uri.path.endsWith('/report.html') &&
+    !uri.queryParameters.containsKey('download');
+
+/// Progress and report for one scan. Spec: F7 (score, severity, list), F10/F13/F14 (report and downloads),
 /// F11 (link, 1 hour), N3 (disclaimer), ADR-6 (nothing is stored).
 class ResultPage extends StatefulWidget {
   const ResultPage({
@@ -84,10 +90,16 @@ class _ResultPageState extends State<ResultPage> {
     }
   }
 
-  Future<void> _download(BuildContext context, String ext) async {
+  /// Opens the visual report (view) or downloads the report as [ext]. The HTML file download needs
+  /// `?download=1`, otherwise the server shows it (F14, specs/11-report.md).
+  Future<void> _download(BuildContext context, String ext,
+      {bool view = false}) async {
     final messenger = ScaffoldMessenger.of(context);
-    final ok =
-        await widget.onDownload(widget.api.reportUri(widget.scanId, ext));
+    var uri = widget.api.reportUri(widget.scanId, ext);
+    if (ext == 'html' && !view) {
+      uri = uri.replace(queryParameters: const {'download': '1'});
+    }
+    final ok = await widget.onDownload(uri);
     if (!ok) {
       messenger.showSnackBar(const SnackBar(
           content: Text('Der Download konnte nicht gestartet werden.')));
@@ -171,6 +183,7 @@ class _ResultPageState extends State<ResultPage> {
       _DownloadCard(
         status: s,
         onDownload: (ext) => _download(context, ext),
+        onView: () => _download(context, 'html', view: true),
       ),
       const SizedBox(height: 24),
       if (f != null) ...[
@@ -194,12 +207,14 @@ class _ResultPageState extends State<ResultPage> {
   }
 }
 
-/// Tells the user that nothing is stored and offers the downloads (ADR-6, F10, F13, F11).
+/// Tells the user that nothing is stored and offers the report and downloads (ADR-6, F10, F13, F14, F11).
 class _DownloadCard extends StatelessWidget {
-  const _DownloadCard({required this.status, required this.onDownload});
+  const _DownloadCard(
+      {required this.status, required this.onDownload, required this.onView});
 
   final ScanStatus status;
   final void Function(String ext) onDownload;
+  final VoidCallback onView;
 
   @override
   Widget build(BuildContext context) {
@@ -213,12 +228,14 @@ class _DownloadCard extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('Bericht herunterladen', style: theme.textTheme.titleMedium),
+            Text('Bericht ansehen und herunterladen',
+                style: theme.textTheme.titleMedium),
             const SizedBox(height: 8),
             Text(
               'Dieses Ergebnis wird nicht gespeichert. Es ist nur $until über '
               'diesen Link abrufbar und wird danach gelöscht. Laden Sie den '
-              'Bericht herunter, um ihn zu behalten.',
+              'Bericht herunter, um ihn zu behalten. Im Bericht sind die '
+              'Fundstellen in Screenshots der Seiten markiert.',
             ),
             const SizedBox(height: 12),
             Wrap(
@@ -226,9 +243,19 @@ class _DownloadCard extends StatelessWidget {
               runSpacing: 8,
               children: [
                 FilledButton.icon(
+                  onPressed: onView,
+                  icon: const Icon(Icons.open_in_new),
+                  label: const Text('Bericht ansehen'),
+                ),
+                OutlinedButton.icon(
                   onPressed: () => onDownload('pdf'),
                   icon: const Icon(Icons.picture_as_pdf_outlined),
                   label: const Text('Bericht als PDF'),
+                ),
+                OutlinedButton.icon(
+                  onPressed: () => onDownload('html'),
+                  icon: const Icon(Icons.code),
+                  label: const Text('Bericht als HTML'),
                 ),
                 OutlinedButton.icon(
                   onPressed: () => onDownload('json'),

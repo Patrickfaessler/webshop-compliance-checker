@@ -21,6 +21,7 @@ If code and spec disagree, one of them is a bug. Decide which, and fix it in the
 | `S` | scoring | `04-scoring.md` |
 | `C` | crawler | `05-crawler.md` |
 | `D` | detection and AI fallback | `06-detection-and-ai.md` |
+| `RP` | visual report | `11-report.md` |
 | `ADR-n` | decision record | `decisions/` |
 
 Sub-requirements are numbered inside their file (`R6-1`, `R6-2`, …). IDs are never reused.
@@ -45,5 +46,6 @@ Specs, code and comments are in English. The **product UI and all explanations s
 - `08-api.yaml` OpenAPI contract (frontend and backend both build against it)
 - `09-testing.md` test corpus, metrics, CI gates
 - `10-roadmap.md` milestones
+- `11-report.md` visual report: screenshots with marked findings, HTML + PDF (RP-*)
 - `open-questions.md` unresolved items and name ideas
 - `decisions/` ADRs

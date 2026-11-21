@@ -27,13 +27,20 @@ type Job struct {
 	ClientKey string
 }
 
+// Annotator takes screenshots of the pages with findings and locates each finding on them, after the rules ran
+// (specs/11-report.md RP-1). It returns the shots and the findings with Position/Box set. Errors are not fatal.
+type Annotator interface {
+	Annotate(ctx context.Context, findings []scan.Finding, pageOrder []string) ([]scan.Shot, []scan.Finding)
+}
+
 type Runner struct {
-	Store   scan.Store
-	Source  PageSource
-	Rules   []rules.Rule
-	Release func(clientKey string) // may be nil
-	Now     func() time.Time
-	Timeout time.Duration // total scan time, C-1 (5 min)
+	Store     scan.Store
+	Source    PageSource
+	Annotator Annotator // nil = no screenshots (no browser)
+	Rules     []rules.Rule
+	Release   func(clientKey string) // may be nil
+	Now       func() time.Time
+	Timeout   time.Duration // total scan time, C-1 (5 min)
 }
 
 // Loop processes jobs until ctx is cancelled or jobs is closed.
@@ -117,9 +124,18 @@ func (r *Runner) Run(ctx context.Context, job Job) {
 		outcomes = append(outcomes, scoring.Outcome{Severity: m.Severity, State: res.State})
 	}
 
+	var shots []scan.Shot
+	if r.Annotator != nil && len(findings) > 0 && ctx.Err() == nil {
+		order := make([]string, len(pages))
+		for i, p := range pages {
+			order[i] = p.URL
+		}
+		shots, findings = r.Annotator.Annotate(ctx, findings, order)
+	}
+
 	score, scoreOK := scoring.Score(outcomes)
 	r.Store.Update(job.ScanID, func(s *scan.Scan) {
-		s.RuleResults, s.Findings = results, findings
+		s.RuleResults, s.Findings, s.Shots = results, findings, shots
 		s.PagesDone = len(pages)
 		if s.PagesTotal < len(pages) {
 			s.PagesTotal = len(pages)

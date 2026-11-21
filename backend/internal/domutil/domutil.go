@@ -95,7 +95,7 @@ func Selector(n *html.Node) string {
 	var parts []string
 	for p := n; p != nil && p.Type == html.ElementNode; p = p.Parent {
 		if id, ok := Attr(p, "id"); ok && id != "" {
-			parts = append(parts, "#"+id)
+			parts = append(parts, "#"+CSSEscapeIdent(id)) // RP-3b
 			break
 		}
 		seg := p.Data
@@ -129,5 +129,29 @@ func OpeningTag(n *html.Node) string {
 		b.WriteString(fmt.Sprintf(` %s="%s"`, a.Key, a.Val))
 	}
 	b.WriteString(">")
+	return b.String()
+}
+
+// CSSEscapeIdent escapes s as a CSS identifier, following the CSSOM CSS.escape() algorithm (RP-3b).
+func CSSEscapeIdent(s string) string {
+	rs := []rune(s)
+	var b strings.Builder
+	for i, r := range rs {
+		switch {
+		case r == 0:
+			b.WriteRune('\uFFFD')
+		case (r >= 0x01 && r <= 0x1F) || r == 0x7F,
+			i == 0 && r >= '0' && r <= '9',
+			i == 1 && r >= '0' && r <= '9' && rs[0] == '-':
+			fmt.Fprintf(&b, "\\%x ", r)
+		case i == 0 && r == '-' && len(rs) == 1:
+			b.WriteString("\\-")
+		case r >= 0x80 || r == '-' || r == '_' || (r >= '0' && r <= '9') || (r >= 'a' && r <= 'z') || (r >= 'A' && r <= 'Z'):
+			b.WriteRune(r)
+		default:
+			b.WriteByte('\\')
+			b.WriteRune(r)
+		}
+	}
 	return b.String()
 }

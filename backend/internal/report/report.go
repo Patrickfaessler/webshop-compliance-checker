@@ -29,6 +29,25 @@ type Report struct {
 	Scan         ScanInfo     `json:"scan"`
 	RuleResults  []RuleResult `json:"ruleResults"`
 	Findings     []Finding    `json:"findings"`
+	Pages        []Page       `json:"pages,omitempty"` // captured pages (specs/11-report.md RP-1)
+}
+
+// Page is a captured page. The screenshot is only used for the HTML/PDF report, not written to JSON (RP-1, RP-2).
+type Page struct {
+	URL           string `json:"url"`
+	Width         int    `json:"width"`
+	Height        int    `json:"height"`
+	ViewportWidth int    `json:"viewportWidth"`
+	Truncated     bool   `json:"truncated"`
+	Image         []byte `json:"-"` // JPEG
+}
+
+// Box is an element rectangle in CSS px of the page screenshot (RP-3).
+type Box struct {
+	X      float64 `json:"x"`
+	Y      float64 `json:"y"`
+	Width  float64 `json:"width"`
+	Height float64 `json:"height"`
 }
 
 type ScanInfo struct {
@@ -61,6 +80,8 @@ type Finding struct {
 	Snippet   string `json:"snippet"`
 	Sub       string `json:"sub,omitempty"`
 	SummaryDe string `json:"summaryDe"`
+	Position  string `json:"position,omitempty"` // RP-3: element, page, hidden, outside, not_found
+	Box       *Box   `json:"box,omitempty"`
 }
 
 // Build turns a finished scan into a report. metas supplies German names and severities per rule id.
@@ -93,9 +114,19 @@ func Build(sc scan.Scan, metas map[string]rules.Meta, now time.Time) (Report, er
 		})
 	}
 	for _, f := range sc.Findings {
-		r.Findings = append(r.Findings, Finding{
+		rf := Finding{
 			ID: f.ID, RuleID: f.RuleID, Severity: string(f.Severity), URL: f.URL, Selector: f.Selector,
-			Snippet: f.Snippet, Sub: f.Sub, SummaryDe: f.SummaryDe,
+			Snippet: f.Snippet, Sub: f.Sub, SummaryDe: f.SummaryDe, Position: f.Position,
+		}
+		if f.Box != nil {
+			rf.Box = &Box{X: f.Box.X, Y: f.Box.Y, Width: f.Box.Width, Height: f.Box.Height}
+		}
+		r.Findings = append(r.Findings, rf)
+	}
+	for _, sh := range sc.Shots {
+		r.Pages = append(r.Pages, Page{
+			URL: sh.URL, Width: sh.Width, Height: sh.Height, ViewportWidth: sh.ViewportWidth,
+			Truncated: sh.Truncated, Image: sh.Image,
 		})
 	}
 	return r, nil
