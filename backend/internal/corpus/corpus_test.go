@@ -166,3 +166,12 @@ func loadPages(t *testing.T, dir string, sess *crawler.Session) rules.Input {
 	}
 	return in
 }
+
+// Spec: F8 — every rule has a German explanation for the finding detail.
+func TestMetaHasExplanation(t *testing.T) {
+	for id, r := range allRules() {
+		if r.Meta().ExplanationDe == "" {
+			t.Errorf("%s: no ExplanationDe", id)
+		}
+	}
+}

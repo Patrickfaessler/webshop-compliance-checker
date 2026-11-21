@@ -25,13 +25,14 @@ func New() Rule { return Rule{} }
 // Meta implements rules.Rule.
 func (Rule) Meta() rules.Meta {
 	return rules.Meta{
-		ID:         "A6",
-		Name:       "Page language declared",
-		NameDe:     "Seitensprache angegeben",
-		Area:       "accessibility",
-		Severity:   rules.Notice,
-		AIFallback: false,
-		SummaryDe:  "Die Seite gibt ihre Sprache nicht an (lang-Attribut fehlt oder ist ungültig).",
+		ID:            "A6",
+		Name:          "Page language declared",
+		NameDe:        "Seitensprache angegeben",
+		Area:          "accessibility",
+		Severity:      rules.Notice,
+		AIFallback:    false,
+		SummaryDe:     "Die Seite gibt ihre Sprache nicht an (lang-Attribut fehlt oder ist ungültig).",
+		ExplanationDe: "Die Seite sagt nicht, in welcher Sprache sie geschrieben ist. Screenreader wissen dann nicht, wie sie den Text aussprechen sollen.",
 	}
 }
 

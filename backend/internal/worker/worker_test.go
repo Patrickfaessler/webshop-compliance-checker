@@ -216,3 +216,27 @@ func TestRunAllPagesTimeout(t *testing.T) {
 		}
 	}
 }
+
+// fixRule fails with one finding that carries a fix.
+type fixRule struct{}
+
+func (fixRule) Meta() rules.Meta {
+	return rules.Meta{ID: "A3", Area: "accessibility", Severity: rules.Critical, ExplanationDe: "e"}
+}
+func (fixRule) Check(context.Context, rules.Input) (rules.Result, error) {
+	return rules.Result{State: rules.Failed, DecidedBy: rules.DecidedStructural,
+		Findings: []rules.Finding{{PageURL: "https://s.at/", Selector: "#x", Fix: &rules.Fix{TextDe: "t"}}}}, nil
+}
+
+// Spec: F8 — the fix of a finding and the rule's explanation are stored with the scan.
+func TestRunCopiesFixAndExplanation(t *testing.T) {
+	var released []string
+	r, st := newRunner(fakeSource{pages: []rules.Page{page(`<html lang="de"><body></body></html>`)}}, &released)
+	r.Rules = []rules.Rule{fixRule{}}
+	seed(t, st, "accessibility")
+	r.Run(context.Background(), Job{ScanID: "s1", ClientKey: "k"})
+	s, _ := st.Get("s1")
+	if len(s.Findings) != 1 || s.Findings[0].Fix == nil || s.Findings[0].Fix.TextDe != "t" || s.Findings[0].ExplanationDe != "e" {
+		t.Fatalf("findings = %+v", s.Findings)
+	}
+}

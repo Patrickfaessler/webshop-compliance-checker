@@ -21,7 +21,8 @@ func New() Rule { return Rule{} }
 func (Rule) Meta() rules.Meta {
 	return rules.Meta{
 		ID: "A3", Name: "Form labels", NameDe: "Beschriftung von Formularfeldern", Area: "accessibility", Severity: rules.Critical,
-		SummaryDe: "Ein Formularfeld hat keine Beschriftung, die Screenreader vorlesen können.",
+		SummaryDe:     "Ein Formularfeld hat keine Beschriftung, die Screenreader vorlesen können.",
+		ExplanationDe: "Dieses Eingabefeld hat keine Beschriftung, die ein Screenreader vorlesen kann. Nutzer wissen nicht, was sie eintragen sollen.",
 	}
 }
 

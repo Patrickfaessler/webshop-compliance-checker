@@ -16,7 +16,8 @@ func New() Rule { return Rule{} }
 func (Rule) Meta() rules.Meta {
 	return rules.Meta{
 		ID: "A5", Name: "Keyboard operation", NameDe: "Bedienung per Tastatur", Area: "accessibility", Severity: rules.Critical,
-		SummaryDe: "Nicht alle Bedienelemente sind mit der Tastatur erreichbar oder der Fokus ist nicht sichtbar.",
+		SummaryDe:     "Nicht alle Bedienelemente sind mit der Tastatur erreichbar oder der Fokus ist nicht sichtbar.",
+		ExplanationDe: "Nicht jeder kann eine Maus benutzen. Alle Bedienelemente müssen mit der Tab-Taste erreichbar sein und man muss sehen, wo man gerade ist.",
 	}
 }
 

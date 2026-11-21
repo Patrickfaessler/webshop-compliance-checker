@@ -15,7 +15,8 @@ func New() Rule { return Rule{} }
 func (Rule) Meta() rules.Meta {
 	return rules.Meta{
 		ID: "A1", Name: "Text contrast", NameDe: "Textkontrast", Area: "accessibility", Severity: rules.Warning,
-		SummaryDe: "Text und Hintergrund haben zu wenig Kontrast.",
+		SummaryDe:     "Text und Hintergrund haben zu wenig Kontrast.",
+		ExplanationDe: "Text und Hintergrund sind zu ähnlich in der Farbe. Menschen mit Sehschwäche können den Text schlecht lesen.",
 	}
 }
 
