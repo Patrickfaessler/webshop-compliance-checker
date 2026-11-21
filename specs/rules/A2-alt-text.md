@@ -1,6 +1,6 @@
 # A2 Alternative text for images
 
-- **Status:** verified (2026-11-05): corpus 3 defect + 3 clean, recall 3/3, 0 false alarms; axe image rules plus DOM check for file-name alt texts (A2-3). Code: `backend/internal/rules/a2`. Fix templates not yet implemented. ·  **legal-checked:** n/a · **Area:** accessibility · **Severity:** warning
+- **Status:** verified (2026-11-05): corpus 3 defect + 3 clean, recall 3/3, 0 false alarms; axe image rules plus DOM check for file-name alt texts (A2-3). Code: `backend/internal/rules/a2`. Fix templates implemented and tested (2026-11-21, A2-F; code in `backend/internal/fixes` and the rule). ·  **legal-checked:** n/a · **Area:** accessibility · **Severity:** warning
 - **Basis:** WCAG 2.1 SC 1.1.1 (EN 301 549 clause 9.1.1.1)
 - **applies_when:** page has `img`, `input[type=image]`, `area`, or `svg[role=img]`
 - **ai_fallback:** no (detection); suggestion text for alt may use AI only if no template fits (D-3)

@@ -1,6 +1,6 @@
 # A6 Page language declared
 
-- **Status:** verified (2026-11-05): unit tests A6-1..A6-4 and corpus (3 defect + 3 clean cases, recall 3/3, 0 false alarms) pass. Code: `backend/internal/rules/a6`. Wired to the crawler and API; live-tested.
+- **Status:** verified (2026-11-05): unit tests A6-1..A6-4 and corpus (3 defect + 3 clean cases, recall 3/3, 0 false alarms) pass. Code: `backend/internal/rules/a6`. Wired to the crawler and API; live-tested. Fix templates implemented and tested (2026-11-21, A6-F; code in `backend/internal/fixes` and the rule).
 - **legal-checked:** n/a
 - **Area:** accessibility
 - **Severity:** notice

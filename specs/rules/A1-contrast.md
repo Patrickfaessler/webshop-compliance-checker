@@ -1,6 +1,6 @@
 # A1 Text contrast
 
-- **Status:** verified (2026-11-05): corpus 3 defect + 3 clean, recall 3/3, 0 false alarms with axe-core 4.10.2 in Edge. Code: `backend/internal/rules/a1`. Not implemented: suggested-colour fix template (A1-3). ·  **legal-checked:** n/a · **Area:** accessibility · **Severity:** warning
+- **Status:** verified (2026-11-05): corpus 3 defect + 3 clean, recall 3/3, 0 false alarms with axe-core 4.10.2 in Edge. Code: `backend/internal/rules/a1`. Fix templates implemented and tested (2026-11-21, A1-F; code in `backend/internal/fixes` and the rule). ·  **legal-checked:** n/a · **Area:** accessibility · **Severity:** warning
 - **Basis:** WCAG 2.1 SC 1.4.3 (EN 301 549 clause 9.1.4.3)
 - **applies_when:** page contains visible text
 - **ai_fallback:** no

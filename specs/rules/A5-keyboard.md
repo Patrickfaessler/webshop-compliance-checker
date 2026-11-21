@@ -1,6 +1,6 @@
 # A5 Keyboard operation
 
-- **Status:** verified (2026-11-21): unit tests (rule mapping A5-7, page types A5-5/A5-6, probe fixtures A5-1…A5-4, A5-9, cap), corpus 3 defect + 1 clean (recall 3/3, 0 false alarms), test shops (Radwerk planted defects found, Teehaus/Seifen pass). Limitations: delegated click handlers on ancestors and broken arrow keys inside radio groups are not detected. Code: `backend/internal/crawler/keyboard*.go`, `backend/internal/rules/a5`. Fix templates not yet implemented. · **legal-checked:** n/a · **Area:** accessibility · **Severity:** critical
+- **Status:** verified (2026-11-21): unit tests (rule mapping A5-7, page types A5-5/A5-6, probe fixtures A5-1…A5-4, A5-9, cap), corpus 3 defect + 1 clean (recall 3/3, 0 false alarms), test shops (Radwerk planted defects found, Teehaus/Seifen pass). Limitations: delegated click handlers on ancestors and broken arrow keys inside radio groups are not detected. Code: `backend/internal/crawler/keyboard*.go`, `backend/internal/rules/a5`. Fix templates implemented and tested (2026-11-21, A5-F; code in `backend/internal/fixes` and the rule). · **legal-checked:** n/a · **Area:** accessibility · **Severity:** critical
 - **Basis:** WCAG 2.1 SC 2.1.1, 2.1.2, 2.4.7 (EN 301 549 clause 9.2.1.1, 9.2.1.2, 9.2.4.7). Custom rule: a keyboard
   probe in the crawl tab with chromedp and real CDP key events (`Input.dispatchKeyEvent`, ADR-4).
 - **applies_when:** page has interactive elements
