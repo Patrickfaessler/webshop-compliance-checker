@@ -20,6 +20,7 @@ import (
 	"compliancechecker/internal/rules/a2"
 	"compliancechecker/internal/rules/a3"
 	"compliancechecker/internal/rules/a4"
+	"compliancechecker/internal/rules/a5"
 	"compliancechecker/internal/rules/a6"
 )
 
@@ -33,7 +34,7 @@ type expected struct {
 
 // allRules lists the rules the corpus can run. Add each new rule here.
 func allRules() map[string]rules.Rule {
-	list := []rules.Rule{a1.New(), a2.New(), a3.New(), a4.New(), a6.New()}
+	list := []rules.Rule{a1.New(), a2.New(), a3.New(), a4.New(), a5.New(), a6.New()}
 	m := make(map[string]rules.Rule, len(list))
 	for _, r := range list {
 		m[r.Meta().ID] = r
@@ -41,8 +42,8 @@ func allRules() map[string]rules.Rule {
 	return m
 }
 
-// needsAxe lists rules that cannot be judged without an axe-core run.
-var needsAxe = map[string]bool{"A1": true, "A2": true, "A3": true}
+// needsBrowser lists rules that cannot be judged without a browser (axe-core run or keyboard probe, A5).
+var needsBrowser = map[string]bool{"A1": true, "A2": true, "A3": true, "A5": true}
 
 type stats struct{ planted, found, clean, falseAlarms int }
 
@@ -85,7 +86,7 @@ func TestCorpus(t *testing.T) {
 				t.Fatalf("bad expected.json: %v", err)
 			}
 			for id := range exp.Expect {
-				if needsAxe[id] && sess == nil {
+				if needsBrowser[id] && sess == nil {
 					t.Skip("needs a browser for axe-core")
 				}
 			}
