@@ -25,6 +25,8 @@ const maxCrops = 60
 type htmlView struct {
 	Host, StartURL, CreatedDe, GeneratedDe, StatusDe, AreasDe string
 	PagesScanned                                              int
+	KeyboardDe                                                string   // A5 mode line (RP-6)
+	KeyboardPages                                             []string // probed pages
 	ScoreText                                                 string
 	Counts                                                    []countView
 	Disclaimer                                                string
@@ -80,6 +82,7 @@ func (r Report) HTML() ([]byte, error) {
 		Host: r.Scan.Host, StartURL: r.Scan.StartURL,
 		CreatedDe: dateTimeDe(r.Scan.CreatedAt), GeneratedDe: dateTimeDe(r.GeneratedAt),
 		PagesScanned: r.Scan.PagesScanned, Disclaimer: r.DisclaimerDe, FindingCount: len(r.Findings),
+		KeyboardDe: r.KeyboardLineDe(), KeyboardPages: r.Scan.KeyboardPages,
 	}
 	v.StatusDe = "abgeschlossen"
 	if r.Scan.Status == "incomplete" {

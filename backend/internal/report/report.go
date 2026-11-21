@@ -4,7 +4,9 @@ package report
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
 	"regexp"
+	"slices"
 	"strings"
 	"time"
 
@@ -60,6 +62,10 @@ type ScanInfo struct {
 	PagesScanned int        `json:"pagesScanned"`
 	CreatedAt    time.Time  `json:"createdAt"`
 	FinishedAt   *time.Time `json:"finishedAt"`
+	// A5 keyboard probe: mode, Tab limit and probed pages (RP-6)
+	KeyboardAllPages   bool     `json:"keyboardAllPages"`
+	KeyboardMaxPresses int      `json:"keyboardMaxPresses"`
+	KeyboardPages      []string `json:"keyboardPages"`
 }
 
 type RuleResult struct {
@@ -95,6 +101,8 @@ func Build(sc scan.Scan, metas map[string]rules.Meta, now time.Time) (Report, er
 		Scan: ScanInfo{
 			ID: sc.ID, StartURL: sc.StartURL, Host: sc.Host, Areas: append([]string{}, sc.Areas...),
 			Status: string(sc.Status), Score: sc.Score, PagesScanned: sc.PagesDone, CreatedAt: sc.CreatedAt.UTC(),
+			KeyboardAllPages: sc.KeyboardAllPages, KeyboardMaxPresses: sc.KeyboardMaxPresses,
+			KeyboardPages: append([]string{}, sc.KeyboardPages...),
 		},
 		RuleResults: []RuleResult{},
 		Findings:    []Finding{},
@@ -147,4 +155,20 @@ func (r Report) FileName(ext string) string {
 		host = "shop"
 	}
 	return "webshop-check_" + host + "_" + r.Scan.CreatedAt.In(vienna).Format("2006-01-02") + "." + ext
+}
+
+// KeyboardLineDe is the A5 mode line of the report header (RP-6); empty when the accessibility area did not run.
+func (r Report) KeyboardLineDe() string {
+	if !slices.Contains(r.Scan.Areas, "accessibility") {
+		return ""
+	}
+	mode := "Stichprobe"
+	if r.Scan.KeyboardAllPages {
+		mode = "alle Seiten"
+	}
+	presses := r.Scan.KeyboardMaxPresses
+	if presses <= 0 {
+		presses = 200
+	}
+	return fmt.Sprintf("Tastaturprüfung: %s (%d Seiten), bis zu %d Tab-Drücke pro Seite", mode, len(r.Scan.KeyboardPages), presses)
 }

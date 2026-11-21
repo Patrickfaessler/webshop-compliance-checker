@@ -106,6 +106,12 @@ func (r Report) PDF(opt PDFOptions) ([]byte, error) {
 	}
 	line("Status:", status)
 	line("Geprüfte Seiten:", fmt.Sprint(r.Scan.PagesScanned))
+	if kb := r.KeyboardLineDe(); kb != "" { // RP-6
+		line("Tastatur:", kb)
+		for _, u := range r.Scan.KeyboardPages {
+			line("", u)
+		}
+	}
 	var areas []string
 	for _, a := range r.Scan.Areas {
 		areas = append(areas, areaDe(a))
