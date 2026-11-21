@@ -111,7 +111,8 @@ func walkContent(doc *html.Node, whole bool, fn func(*html.Node)) {
 
 var (
 	// a capitalised street name (at least 3 letters) plus house number, e.g. "Hauptstraße 12", "Musterweg 3/4", "Damrak 1"
-	reStreet = regexp.MustCompile(`(\p{Lu}\p{Ll}{2,}(?:[ -]\p{L}\p{Ll}+)*\.?)\s+\d{1,4}[a-z]?(?:\s*[/-]\s*\d{1,4}[a-z]?)*\b`)
+	// further words must be capitalised or short particles ("Rue de la Paix 5"); a 4-digit year is no house number
+	reStreet = regexp.MustCompile(`(\p{Lu}\p{Ll}{2,}(?:[ -](?:\p{Lu}\p{Ll}+|de|la|le|du|des|der|del|di|da|am|an|im|zum|zur|von|van|\d{1,2}\.))*\.?)\s+(\d{1,4})[a-z]?(?:\s*[/-]\s*\d{1,4}[a-z]?)*\b`)
 	// English order, e.g. "12 High Street"
 	reStreetEn = regexp.MustCompile(`\b\d{1,5}[A-Za-z]?\s+(?:\p{Lu}\p{Ll}+\s+)+(?:Street|St\.?|Road|Rd\.?|Avenue|Ave\.?|Lane|Way|Drive|Place|Square|Row|Hill)\b`)
 	// not streets: words that precede numbers in an Impressum
@@ -137,6 +138,9 @@ var (
 func Address(text string, l lexicon.List) Field {
 	street := ""
 	for _, m := range reStreet.FindAllStringSubmatch(text, -1) {
+		if n := m[2]; len(n) == 4 && (n[:2] == "18" || n[:2] == "19" || n[:2] == "20") {
+			continue // a year, e.g. "seit 1998"
+		}
 		if !notStreet[strings.ToLower(strings.TrimSuffix(m[1], "."))] {
 			street = m[0]
 			break

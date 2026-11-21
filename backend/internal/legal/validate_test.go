@@ -42,6 +42,8 @@ func TestAddress(t *testing.T) {
 		"Rua Augusta 5, 1100-053 Lisboa",
 		"Damrak 1, 1012 AB Amsterdam",
 		"Drottninggatan 5, 111 51 Stockholm",
+		"Rue de la Paix 5, 75002 Paris",
+		"Straße des 17. Juni 135, 10623 Berlin",
 	}
 	for _, s := range found {
 		if f := Address(s, de()); f.State != Found || f.Quote == "" {
@@ -56,7 +58,8 @@ func TestAddress(t *testing.T) {
 			t.Errorf("%q: %+v, want Unsure", s, f)
 		}
 	}
-	for _, s := range []string{"Wir sind ein Familienbetrieb.", "Telefon: 0512 123456", "Firmenbuch: FN 123456a, UID: ATU12345678"} {
+	for _, s := range []string{"Wir sind ein Familienbetrieb.", "Telefon: 0512 123456", "Firmenbuch: FN 123456a, UID: ATU12345678",
+		"Wir rösten seit 1998 mit Leidenschaft.", "Gegründet 2004 in den Bergen."} {
 		if f := Address(s, de()); f.State != Missing {
 			t.Errorf("%q: %+v, want Missing", s, f)
 		}
