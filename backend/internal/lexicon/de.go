@@ -5,9 +5,10 @@ var de = List{
 	Links: map[Kind][]string{
 		LegalNotice: {"impressum", "anbieterkennzeichnung", "offenlegung"},
 		Privacy:     {"datenschutzerklärung", "datenschutz", "datenschutzhinweise"},
-		Terms:       {"agb", "allgemeine geschäftsbedingungen", "geschäftsbedingungen"},
-		Withdrawal:  {"widerrufsbelehrung", "widerrufsrecht", "widerruf", "rücktrittsrecht", "rücktritt"},
+		Terms:       {"agb", "allgemeine geschäftsbedingungen", "geschäftsbedingungen", "verkaufsbedingungen", "lieferbedingungen", "nutzungsbedingungen"},
+		Withdrawal:  {"widerrufsbelehrung", "widerrufsrecht", "widerrufsrichtlinie", "widerruf", "rücktrittsrecht", "rücktritt", "rückgabe", "rückerstattung"},
 	},
+	Generic: []string{"rechtliches", "rechtliche hinweise", "rechtliche informationen"},
 	Sections: []Section{
 		{"Verantwortlicher", []string{"verantwortlicher", "verantwortliche stelle", "verantwortlich"}},
 		{"Zwecke und Rechtsgrundlage", []string{"rechtsgrundlage", "zweck", "art. 6"}},

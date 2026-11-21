@@ -65,7 +65,13 @@ func (Rule) Check(_ context.Context, in rules.Input) (rules.Result, error) {
 	}
 	l, _ := lexicon.For(lang)
 	text := strings.ToLower(legal.ContentText(p))
+	embedded := func() rules.Result {
+		return rules.Result{State: rules.NotAssessable, DecidedBy: rules.DecidedStructural, NoteDe: legal.NoteEmbedded}
+	}
 	if len([]rune(text)) <= minChars {
+		if legal.Embedded(p) {
+			return embedded(), nil // R2-8
+		}
 		return failed(p.URL, "incomplete-sections", fixText, de.Sections, rules.DecidedDictionary), nil
 	}
 	heads := headings(p)
@@ -76,6 +82,9 @@ func (Rule) Check(_ context.Context, in rules.Input) (rules.Result, error) {
 		}
 	}
 	if len(l.Sections)-len(missing) < minSections {
+		if legal.Embedded(p) {
+			return embedded(), nil
+		}
 		return failed(p.URL, "incomplete-sections", fixText, missing, rules.DecidedDictionary), nil
 	}
 	return rules.Result{State: rules.Passed, DecidedBy: rules.DecidedDictionary, NoteDe: notePassed}, nil

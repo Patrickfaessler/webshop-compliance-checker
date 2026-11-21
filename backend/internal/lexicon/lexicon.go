@@ -24,6 +24,7 @@ type Section struct {
 type List struct {
 	Lang          string            // "de", "en"
 	Links         map[Kind][]string // matched against link text and URL path
+	Generic       []string          // broad legal links ("Rechtliches") that may hold the legal notice and privacy; ranked below Links
 	Sections      []Section         // R2: exactly six, in spec order
 	Withdrawal    []string          // R5 withdrawal vocabulary
 	Periods       []string          // R5 period phrases
@@ -39,6 +40,20 @@ var lists = map[string]List{"de": de, "en": en}
 func For(lang string) (List, bool) {
 	l, ok := lists[lang]
 	return l, ok
+}
+
+// PriorityWords lists every link word of every language (spaces as hyphens too), for the crawler's queue (C-2).
+func PriorityWords() []string {
+	var out []string
+	for _, l := range lists {
+		for _, ws := range l.Links {
+			for _, w := range ws {
+				out = append(out, w, strings.ReplaceAll(w, " ", "-"))
+			}
+		}
+		out = append(out, l.Generic...)
+	}
+	return out
 }
 
 // Hits counts the distinct words of l (link words, labels, section words, withdrawal words) found in text.

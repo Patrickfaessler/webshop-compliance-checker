@@ -12,7 +12,8 @@ Deterministic version (2026-11-21); the AI fallback is not built yet (→ `not_a
 
 1. Find the privacy page among the crawled pages like R1 (lexicon `datenschutz`, `datenschutzerklärung`, `privacy`,
    `privacy policy`, …). No link → `failed` (`no-privacy-page`). Link but page not crawled → `not_assessable`.
-2. Language as in R1 (de/en only, else `not_assessable`). Content text as in R1 (without header/nav/footer/aside/forms).
+2. Language as in R1 (de/en only, else `not_assessable`); it is detected on the content text first, so a German menu
+   around an English policy does not decide it. Content text as in R1 (without header/nav/footer/aside/forms).
 3. Content text ≤ 500 characters → `failed` (`incomplete-sections`) with all six sections missing.
 4. Six section markers, each with de/en words: (1) `Verantwortlicher` (verantwortlich, verantwortliche stelle,
    controller), (2) `Zwecke und Rechtsgrundlage` (zweck, rechtsgrundlage, art. 6, purpose, legal basis), (3) `Empfänger`
@@ -49,4 +50,7 @@ Wer personenbezogene Daten verarbeitet, muss darüber informieren: wer verantwor
 - R2-1: complete fixture passes. R2-2: no link fails. R2-3: page with only a heading fails with missing list. R2-4: English fixture passes via dictionary.
 - R2-5: page with ≤ 500 characters fails with all six missing.
 - R2-6: numbered/uppercase headings (`1. VERANTWORTLICHER`, `§ 3 Ihre Rechte`) count.
+- R2-7: an English policy inside a German header/menu/footer passes.
+- R2-8: a policy embedded in an iframe → not_assessable (note as R1).
+- R2-9: an off-site policy link plus a "Datenschutz-Einstellungen" `#` link or a blog teaser "Datenschutz im Alltag" → not_assessable, not failed; a `<div class="footer">` link beats a teaser in the main text.
 - R2-F: every finding carries a fix (origin template, non-empty German text).

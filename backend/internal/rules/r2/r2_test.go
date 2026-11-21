@@ -133,3 +133,25 @@ func TestR2Meta(t *testing.T) {
 		t.Errorf("meta = %+v", m)
 	}
 }
+
+// Spec: R2-7 — an English policy inside a German menu passes.
+func TestR2EnglishInGermanChrome(t *testing.T) {
+	nav := `<header><nav>` + strings.Repeat(`<a href="/k">Startseite</a> <a href="/k">Neuheiten und Angebote für die ganze Familie</a> <a href="/k">Über uns und unsere Geschichte</a> `, 15) + `</nav></header>`
+	body := `<h1>Privacy policy</h1><p>This policy explains how we handle personal data when you visit and order from this online shop and how we protect it.</p>
+<h2>Data controller</h2><p>The controller is Northwind Goods Ltd.</p><h2>Purpose and legal basis</h2><p>We process data to perform the contract (Art. 6(1)(b) GDPR).</p>
+<h2>Recipients</h2><p>Recipients are our payment and shipping providers.</p><h2>Retention</h2><p>We keep order data for seven years.</p>
+<h2>Your rights</h2><p>You have the right of access, rectification and erasure.</p><h2>Supervisory authority</h2><p>You may lodge a complaint with the data protection authority of your country at any time.</p>`
+	in := shop("de", body)
+	in.Pages[1].HTML = `<html lang="de"><body>` + nav + `<main>` + body + `</main><footer>Impressum · Datenschutz · Versand</footer></body></html>`
+	if res := check(t, in); res.State != rules.Passed {
+		t.Errorf("got %+v", res)
+	}
+}
+
+// Spec: R2-8 — a policy embedded in an iframe is not judged.
+func TestR2Embedded(t *testing.T) {
+	res := check(t, shop("de", `<h1>Datenschutzerklärung</h1><iframe src="https://legal.example/x"></iframe>`))
+	if res.State != rules.NotAssessable || !strings.Contains(res.NoteDe, "eingebettet (iframe)") {
+		t.Errorf("got %+v", res)
+	}
+}

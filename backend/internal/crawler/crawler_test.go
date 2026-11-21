@@ -337,3 +337,12 @@ func TestCrawlRecordsRequestedURL(t *testing.T) {
 		t.Fatalf("impressum not crawled: %+v", res.Pages)
 	}
 }
+
+// Spec: C-2 — the crawler's priority words include the legal lexicon.
+func TestPriorityFromLexicon(t *testing.T) {
+	for _, text := range []string{"rechtliches", "rücktrittsrecht", "anbieterkennzeichnung", "verkaufsbedingungen", "refund policy"} {
+		if priority("https://s.at/p/1", text) != 0 {
+			t.Errorf("%s should be high priority", text)
+		}
+	}
+}

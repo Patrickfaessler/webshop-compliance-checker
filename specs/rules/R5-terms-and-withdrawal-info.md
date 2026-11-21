@@ -12,8 +12,10 @@ Deterministic version (2026-11-21); the AI fallback is not built yet (→ `not_a
 
 1. Find the terms page (`agb`, `allgemeine geschäftsbedingungen`, `terms`, `terms and conditions`, …) and the
    withdrawal page (`widerruf`, `widerrufsbelehrung`, `rücktritt`, `withdrawal`, `cancellation`, …) among the crawled
-   pages like R1. A withdrawal-only link never counts as the terms link.
-2. Withdrawal information is searched on the withdrawal page if crawled, else inside the terms: a withdrawal word
+   pages like R1 (same ranking). A link that names only the withdrawal page never counts as the terms link; a combined
+   "AGB & Widerrufsbelehrung" link counts for both. Withdrawal pages include refund/return policies
+   (`Rückgabe`, `Rückerstattung`, `Refund policy`, Shopify `/policies/refund-policy`).
+2. Withdrawal information is searched on every crawled withdrawal candidate and in the terms (best result wins): a withdrawal word
    (`widerruf`, `widerrufen`, `rücktrittsrecht`, `withdrawal`, `cancel the contract`, …) within 300 characters of a
    period phrase (`14 Tage(n)`, `vierzehn Tage(n)`, `14 days`, `fourteen days`) in the content text (R1 definition).
    Each page uses its own language (de/en; else `not_assessable`).
@@ -27,6 +29,7 @@ Deterministic version (2026-11-21); the AI fallback is not built yet (→ `not_a
 | no withdrawal word on the withdrawal page or in the terms | failed (`no-withdrawal-info`) |
 | withdrawal words but no period | not_assessable, note `Widerrufsfrist nicht gefunden – bitte manuell prüfen.` |
 | a linked page that is needed was not crawled | not_assessable, note `Die AGB bzw. die Widerrufsbelehrung sind verlinkt, konnten aber nicht geladen werden.` |
+| no withdrawal words, but a scanned page embeds its text in an iframe | not_assessable, note as R1-11 |
 | language not de/en on the page that matters | not_assessable, note `Seite bitte manuell prüfen (Sprache oder Aufbau nicht erkannt).` |
 
 Notes, joined in this order: always `Annahme: Der Shop verkauft an Verbraucher.`; the state note above; exempt-goods
@@ -57,4 +60,6 @@ Kunden müssen vor dem Kauf lesen können, unter welchen Bedingungen sie kaufen 
 - R5-5: withdrawal vocabulary without period → not_assessable.
 - R5-6: Austrian "Rücktrittsrecht … 14 Tagen" passes.
 - R5-7: English terms page on a German shop is read as English.
+- R5-8: a "Widerrufsformular" link before the real Widerrufsbelehrung does not hide it; a Shopify refund-policy page with the 14-day text counts.
+- R5-9: a combined "AGB & Widerrufsbelehrung" link on a neutral URL counts as the terms link.
 - R5-F: every finding carries a fix (origin template, non-empty German text).

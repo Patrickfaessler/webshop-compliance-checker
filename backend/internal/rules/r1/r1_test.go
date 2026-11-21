@@ -131,3 +131,19 @@ func TestR1Meta(t *testing.T) {
 		t.Errorf("meta = %+v", m)
 	}
 }
+
+// Spec: R1-11 — an Impressum embedded in an iframe is not judged as missing.
+func TestR1Embedded(t *testing.T) {
+	res := check(t, shop(page(`<iframe src="https://legal.example/impressum"></iframe>`)))
+	if res.State != rules.NotAssessable || !strings.Contains(res.NoteDe, "eingebettet (iframe)") {
+		t.Errorf("got %+v", res)
+	}
+}
+
+// Spec: R1-13 — a modal Impressum link is not assessable, not failed.
+func TestR1ModalLink(t *testing.T) {
+	in := rules.Input{Pages: []rules.Page{{URL: start, HTML: `<html lang="de"><body><footer><a href="#">Impressum</a></footer></body></html>`}}}
+	if res := check(t, in); res.State != rules.NotAssessable {
+		t.Errorf("got %+v", res)
+	}
+}

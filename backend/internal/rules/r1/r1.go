@@ -107,7 +107,14 @@ func (Rule) Check(_ context.Context, in rules.Input) (rules.Result, error) {
 		res.Findings[i].Fix = &rules.Fix{TextDe: fixText, Code: strings.Join(missing, "\n"), NoteDe: fixNote}
 	}
 	var notes []string
+	if len(res.Findings) > 0 && legal.Embedded(p) { // the text may sit in an iframe we cannot read (R1-11)
+		res.Findings = nil
+		unsure = nil
+		notes = append(notes, legal.NoteEmbedded)
+		res.State = rules.NotAssessable
+	}
 	switch {
+	case res.State == rules.NotAssessable:
 	case len(res.Findings) > 0:
 		res.State = rules.Failed
 	case len(unsure) > 0:

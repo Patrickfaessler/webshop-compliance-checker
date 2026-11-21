@@ -35,9 +35,13 @@ func quote(s string) string {
 }
 
 var (
-	atSep  = `(?:\s*@\s*|\s*[\(\[\{]\s*at\s*[\)\]\}]\s*)`
+	atSep  = `(?:\s*@\s*|\s*[\(\[\{]\s*(?:at|@)\s*[\)\]\}]\s*)`
 	dotSep = `(?:\s*\.\s*|\s*[\(\[\{]\s*(?:dot|punkt)\s*[\)\]\}]\s*)`
-	reMail = regexp.MustCompile(`(?i)[a-z0-9._%+-]+` + atSep + `[a-z0-9-]+(?:` + dotSep + `[a-z0-9-]+)*` + dotSep + `[a-z]{2,24}\b`)
+	reMail = regexp.MustCompile(`(?i)[\p{L}0-9._%+-]+` + atSep + `[\p{L}0-9-]+(?:` + dotSep + `[\p{L}0-9-]+)*` + dotSep + `\p{L}{2,24}`)
+	// "info at shop dot at" (R1-12)
+	reMailWords = regexp.MustCompile(`(?i)\b[a-z0-9._-]+\s+(?:at|ät)\s+[\p{L}0-9-]+(?:\s+(?:dot|punkt)\s+[\p{L}0-9-]+)+`)
+	// e-mail-like text that is not an address: a reversed address, "@" or at/dot words
+	reMailLike = regexp.MustCompile(`(?i)@|\b(?:at|ät|dot|punkt)\b`)
 )
 
 // Email finds an e-mail address in text, including common obfuscations, or a mailto link in the page (outside
@@ -46,6 +50,12 @@ var (
 func Email(text string, page rules.Page, l lexicon.List, whole bool) Field {
 	if m := reMail.FindString(text); m != "" {
 		return Field{Found, quote(m)}
+	}
+	if m := reMailWords.FindString(text); m != "" {
+		return Field{Found, quote(m)}
+	}
+	if strings.Contains(page.HTML, "data-cfemail") || strings.Contains(page.HTML, "/cdn-cgi/l/email-protection") {
+		return Field{State: Unsure} // Cloudflare e-mail protection: the address is there, encoded (R1-12)
 	}
 	unsure, mailto := false, false
 	walkContent(domutil.Parse(page.HTML), whole, func(n *html.Node) {
@@ -65,7 +75,7 @@ func Email(text string, page rules.Page, l lexicon.List, whole bool) Field {
 			}
 			parent := n.Parent
 			rest := strings.TrimSpace(strings.TrimLeft(strings.TrimSpace(after(strings.ToLower(collapse(domutil.Text(parent))), w)), ":-–"))
-			if hasImg(parent) || rest == "" {
+			if hasImg(parent) || rest == "" || reMailLike.MatchString(rest) {
 				unsure = true
 			}
 			return

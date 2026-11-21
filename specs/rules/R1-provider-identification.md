@@ -15,15 +15,26 @@ Deterministic version (2026-11-21). The AI fallback (D-2) is not built yet: wher
 1. **Find the page** among the crawled pages (no extra fetch): a link whose text or URL path matches the lexicon
    (`impressum`, `anbieterkennzeichnung`, `imprint`, `legal notice`, …), footer/header/nav links first. The target is
    matched against the page URL and the URL requested before redirects (C-2), ignoring fragment and trailing slash.
-   A crawled page whose path matches also counts. No link and no such page → `failed` (`no-legal-notice-page`).
-   Link found but target not crawled (other domain, robots.txt, error, page limit) → `not_assessable`.
+   A crawled page whose path matches, or whose heading names the page (`Impressum`), also counts. No link and no such
+   page → `failed` (`no-legal-notice-page`). Link found but target not crawled (other domain, robots.txt, error, page
+   limit) → `not_assessable`.
+   **Ranking (shared by R1, R2, R5):** candidate links are ranked: links in header/nav/footer, `role=contentinfo` or an
+   element whose class/id contains `footer` first; then link text that is (nearly) just the lexicon word before a longer
+   text containing it; then specific words before generic ones (`Rechtliches`, `Rechtliche Hinweise`, `Legal`); then
+   document order. Among equal ranks a loaded target wins. If the best candidate is not loaded, the result is "linked but
+   not loaded" (never a weaker loaded page). A link `href="#"`, `javascript:…`, or a fragment with no matching element id
+   (a modal) counts as found but not loaded.
+   **Embedded text:** a legal page whose content has an `<iframe>` and where fields are missing → `not_assessable`, note
+   `Der Text ist eingebettet (iframe) und konnte nicht gelesen werden – bitte manuell prüfen.`
 2. **Language** of the legal page: stopword detector when sure, else `<html lang>` if de/en, else the language whose
    lexicon has ≥ 2 hits on the page. Only de and en are supported; otherwise `not_assessable`.
 3. **Text:** fields are searched in the content text (visible text without header, nav, footer, aside, forms). A field
    not found there is searched again in the full text of the same page (R1-10), so an e-mail in the page footer counts.
 4. **Fields**, each found / unsure / missing:
    - E-mail: `mailto:` link or valid address; obfuscations `info (at) shop.at`, `info[at]shop.at`, `info @ shop . at`
-     count as found. An e-mail label followed only by an image → unsure. Otherwise missing.
+     count as found; also `info(@)shop.at`, `info at shop dot at` and internationalised domains (`info@müller-shop.de`).
+     An e-mail label followed only by an image, or by e-mail-like text that is not an address (`@`, `at`, `dot`,
+     `punkt`, a reversed address), or a page with Cloudflare e-mail protection → unsure. Otherwise missing.
    - Address: street line with house number **and** a postal code from the EU format table (4–5 digits with optional
      `A-`/`D-`/`AT-` prefix, PL `00-950`, PT `1000-001`, SE/CZ/SK/GR `114 55`, NL `1012 AB`, IE Eircode, MT `VLT 1117`,
      UK-style on English pages) → found. Only one of the two, a PO box alone, or an address label with unmatched text →
@@ -66,4 +77,7 @@ Online-Shops müssen zeigen, wer sie betreiben und wie man sie erreicht: Name, A
 - R1-8: name without a legal form → not failed.
 - R1-9: legal link present but page not loaded → not_assessable.
 - R1-10: e-mail only in the legal page's footer counts.
+- R1-11: Impressum embedded in an iframe → not_assessable.
+- R1-12: IDN domain and `(@)` / `at … dot` spellings are found; a reversed address or Cloudflare protection → not_assessable.
+- R1-13: a link `href="#"` / `javascript:` named Impressum (modal) → not_assessable; a page "Rechtliches" holding the Impressum is evaluated.
 - R1-F: every finding carries a fix (origin template, non-empty German text).

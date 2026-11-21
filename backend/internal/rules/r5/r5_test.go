@@ -135,3 +135,20 @@ func TestR5Meta(t *testing.T) {
 		t.Errorf("meta = %+v", m)
 	}
 }
+
+// Spec: R5-8 — a form link before the real Widerrufsbelehrung does not hide it.
+func TestR5FormLinkFirst(t *testing.T) {
+	res := check(t, startPage(`<a href="/agb">AGB</a> <a href="/formular">Widerrufsformular</a> <a href="/widerruf">Widerrufsbelehrung</a>`),
+		pg("agb", "de", terms), pg("formular", "de", `<h1>Widerrufsformular</h1><form><label>Name</label><input></form>`), pg("widerruf", "de", withdrawal))
+	if res.State != rules.Passed {
+		t.Errorf("got %+v", res)
+	}
+}
+
+// Spec: R5-9 — a combined "AGB & Widerrufsbelehrung" link on a neutral URL counts as the terms link.
+func TestR5CombinedLink(t *testing.T) {
+	res := check(t, startPage(`<a href="/?page_id=7">AGB &amp; Widerrufsbelehrung</a>`), pg("?page_id=7", "de", terms+`<h2>Widerrufsrecht</h2><p>Sie können binnen 14 Tagen widerrufen.</p>`))
+	if res.State != rules.Passed {
+		t.Errorf("got %+v", res)
+	}
+}

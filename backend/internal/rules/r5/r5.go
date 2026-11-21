@@ -64,7 +64,11 @@ func (Rule) Check(_ context.Context, in rules.Input) (rules.Result, error) {
 	}
 	startURL := in.Pages[0].URL
 	terms := legal.FindLinked(in, lexicon.Terms)
-	wd := legal.FindLinked(in, lexicon.Withdrawal)
+	wds := legal.FindAllLinked(in, lexicon.Withdrawal)
+	var wd legal.Link
+	if len(wds) > 0 {
+		wd = wds[0]
+	}
 	res := rules.Result{DecidedBy: rules.DecidedDictionary}
 	notes := []string{noteB2C}
 
@@ -72,15 +76,18 @@ func (Rule) Check(_ context.Context, in rules.Input) (rules.Result, error) {
 		res.Findings = append(res.Findings, rules.Finding{PageURL: startURL, Sub: "no-terms", Fix: &rules.Fix{TextDe: fixNoTerms}})
 	}
 
-	// withdrawal information: the withdrawal page first, then the terms (R5 Logic 2)
+	// withdrawal information: every crawled withdrawal candidate, then the terms; the best result wins (R5-8)
 	var pages []*rules.Page
-	for _, l := range []legal.Link{wd, terms} {
-		if l.Loaded && (len(pages) == 0 || pages[0] != l.Page) {
+	seen := map[*rules.Page]bool{}
+	for _, l := range append(wds, terms) {
+		if l.Loaded && !seen[l.Page] {
+			seen[l.Page] = true
 			pages = append(pages, l.Page)
 		}
 	}
-	best, sawUnknown, exempt := none, false, false
+	best, sawUnknown, exempt, embedded := none, false, false, false
 	for _, p := range pages {
+		embedded = embedded || legal.Embedded(*p)
 		got, ex := scan(*p)
 		exempt = exempt || ex
 		if got == unknown {
@@ -101,6 +108,9 @@ func (Rule) Check(_ context.Context, in rules.Input) (rules.Result, error) {
 	case notLoaded:
 		assessable = false
 		notes = append(notes, noteNotLoaded)
+	case embedded:
+		assessable = false
+		notes = append(notes, legal.NoteEmbedded)
 	case sawUnknown:
 		assessable = false
 		notes = append(notes, legal.NoteLanguage)
