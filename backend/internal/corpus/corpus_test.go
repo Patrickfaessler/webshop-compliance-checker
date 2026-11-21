@@ -24,6 +24,7 @@ import (
 	"compliancechecker/internal/rules/a6"
 	"compliancechecker/internal/rules/r1"
 	"compliancechecker/internal/rules/r2"
+	"compliancechecker/internal/rules/r5"
 )
 
 const casesDir = "../../../testcorpus/cases"
@@ -36,7 +37,7 @@ type expected struct {
 
 // allRules lists the rules the corpus can run. Add each new rule here.
 func allRules() map[string]rules.Rule {
-	list := []rules.Rule{a1.New(), a2.New(), a3.New(), a4.New(), a5.New(), a6.New(), r1.New(), r2.New()}
+	list := []rules.Rule{a1.New(), a2.New(), a3.New(), a4.New(), a5.New(), a6.New(), r1.New(), r2.New(), r5.New()}
 	m := make(map[string]rules.Rule, len(list))
 	for _, r := range list {
 		m[r.Meta().ID] = r
