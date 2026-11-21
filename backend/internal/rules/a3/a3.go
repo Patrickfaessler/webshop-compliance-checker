@@ -8,6 +8,7 @@ import (
 	"golang.org/x/net/html"
 
 	"compliancechecker/internal/domutil"
+	"compliancechecker/internal/fixes"
 	"compliancechecker/internal/rules"
 	"compliancechecker/internal/rules/axecheck"
 )
@@ -29,9 +30,13 @@ func (Rule) Meta() rules.Meta {
 // Check combines axe-core with a DOM check: axe accepts a placeholder as a name, but the spec (A3-2)
 // does not, because it disappears while typing and is often too faint.
 func (Rule) Check(_ context.Context, in rules.Input) (rules.Result, error) {
-	res := axecheck.Check(axeIDs, in, nil)
+	counters := map[string]int{} // fields without id and name, per page
+	next := func(url string) func() int { return func() int { counters[url]++; return counters[url] } }
+	res := axecheck.Check(axeIDs, in, func(p rules.Page, n rules.AxeNode) *rules.Fix {
+		return labelFix(fixes.Tag(n.HTML), next(p.URL))
+	})
 	for _, p := range in.Pages {
-		res.Findings = append(res.Findings, placeholderOnly(p)...)
+		res.Findings = append(res.Findings, placeholderOnly(p, next(p.URL))...)
 	}
 	if len(res.Findings) > 0 {
 		res.State = rules.Failed
@@ -39,7 +44,7 @@ func (Rule) Check(_ context.Context, in rules.Input) (rules.Result, error) {
 	return res, nil
 }
 
-func placeholderOnly(p rules.Page) []rules.Finding {
+func placeholderOnly(p rules.Page, next func() int) []rules.Finding {
 	doc := domutil.Parse(p.HTML)
 
 	forLabels := map[string]bool{} // ids targeted by <label for=...> with text
@@ -64,7 +69,7 @@ func placeholderOnly(p rules.Page) []rules.Finding {
 			return true
 		}
 		out = append(out, rules.Finding{
-			PageURL: p.URL, Selector: domutil.Selector(n), Snippet: domutil.OpeningTag(n), Sub: "placeholder-only",
+			PageURL: p.URL, Selector: domutil.Selector(n), Snippet: domutil.OpeningTag(n), Sub: "placeholder-only", Fix: labelFix(n, next),
 		})
 		return true
 	})

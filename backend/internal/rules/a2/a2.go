@@ -35,7 +35,13 @@ func (Rule) Meta() rules.Meta {
 
 // Check combines axe-core (missing alt) with a DOM check for file-name alt texts (A2-3).
 func (Rule) Check(_ context.Context, in rules.Input) (rules.Result, error) {
-	res := axecheck.Check(axeIDs, in, nil)
+	docs := map[string]*html.Node{} // parsed once per page for the fixes
+	res := axecheck.Check(axeIDs, in, func(p rules.Page, n rules.AxeNode) *rules.Fix {
+		if docs[p.URL] == nil {
+			docs[p.URL] = domutil.Parse(p.HTML)
+		}
+		return fixFor(imgBySrc(docs[p.URL], n.HTML))
+	})
 	for _, p := range in.Pages {
 		res.Findings = append(res.Findings, fileNameFindings(p)...)
 	}
@@ -56,7 +62,7 @@ func fileNameFindings(p rules.Page) []rules.Finding {
 		alt = strings.TrimSpace(alt)
 		if ok && alt != "" && (fileNameAlt.MatchString(alt) || cameraAlt.MatchString(alt)) {
 			out = append(out, rules.Finding{
-				PageURL: p.URL, Selector: domutil.Selector(n), Snippet: domutil.OpeningTag(n), Sub: "filename-alt",
+				PageURL: p.URL, Selector: domutil.Selector(n), Snippet: domutil.OpeningTag(n), Sub: "filename-alt", Fix: fixFor(n),
 			})
 		}
 		return true
