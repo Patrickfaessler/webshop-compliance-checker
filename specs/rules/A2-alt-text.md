@@ -20,10 +20,14 @@ URL, selector, snippet (img tag), `src`.
 Bilder ohne Beschreibung sind für blinde Menschen unsichtbar. Jedes inhaltliche Bild braucht einen kurzen Alternativtext.
 
 ## Fix templates
-- Product image: `alt="{{productName}}"` where the name comes from the surrounding product title (deterministic).
-- Otherwise: `alt="Beschreibung des Bildes"` with note; AI suggestion allowed only on user request.
+Text for all sub-rules: `Beschreibe das Bild in wenigen Worten, z. B. mit dem Produktnamen.`
+- Product image (a heading or `[itemprop=name]` in the same card, max 4 ancestor levels): code `alt="{{productName}}"` (deterministic, trimmed, ≤ 80 characters).
+- Otherwise (incl. `filename-alt`): code `alt="Beschreibung des Bildes"`, note `Beschreibung bitte anpassen.`
+- Decorative images are mentioned in the note when no product name is found: `Beschreibung bitte anpassen. Rein dekorative Bilder bekommen alt="".`
+- AI suggestion only on user request (later, D-3).
 
 ## Acceptance
 - A2-1: `<img src=a.jpg>` fails; `alt="Rotes T-Shirt"` passes.
 - A2-2: decorative `alt=""` with `role=presentation` passes.
 - A2-3: `alt="IMG_0012.jpg"` fails.
+- A2-F: every finding carries a fix (origin `template`, non-empty German text); page values in the code are HTML-escaped.

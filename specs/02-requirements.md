@@ -13,7 +13,7 @@ Status column: draft / reviewed / implemented / verified (see `README.md`).
 | F5 | Privacy notice, cookie banner, trackers before consent (R2–R4) | Must | Tracker requests listed per browser state with domain | draft |
 | F6 | Terms, withdrawal information, order button, withdrawal function (R5–R7) | Must | Button label quoted verbatim | draft |
 | F7 | Report with score, severity, list of all findings | Must | Score reproducible from rule results (`04-scoring.md`) | draft |
-| F8 | Finding detail: explanation, location (URL + selector), screenshot, suggested fix | Must | Fix is copyable; its origin (`template` or `ai`) and evidence are visible | draft |
+| F8 | Finding detail: explanation, location (URL + selector), screenshot, suggested fix | Must | Fix is copyable; its origin (`template` or `ai`) and evidence are visible. Trace: A1-F…A6-F, RP-13, app page `/r/:id/f/:findingId` | draft |
 | F9 | Re-scan from a result page with per-rule comparison | Later | **Postponed (ADR-6):** without stored scans there is nothing to compare; could later compare against an uploaded JSON report | draft |
 | F10 | Download the finished report as **PDF** (German) | Must | PDF has URL, date, score with its wording (S-3), all rule results, all findings with location, and the disclaimer from `01-legal-scope.md` on the first page. Raised from Should: the download is the only lasting copy (ADR-6). Printed from the HTML report when a browser is available, text PDF otherwise (ADR-7) | draft |
 | F11 | Result link `/r/{id}` readable by anyone who has it, while the scan is in memory | Must | ID has ≥ 128 bits of randomness; not listed anywhere; **expires 1 hour after the scan was created (ADR-6)**; the page tells the user until when and to download the report | draft |

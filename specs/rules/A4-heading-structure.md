@@ -20,7 +20,12 @@ URL, selector of the offending heading, snippet, which sub-rule (`no-h1`, `multi
 Überschriften gliedern die Seite wie ein Inhaltsverzeichnis. Screenreader-Nutzer springen damit durch die Seite; fehlende oder übersprungene Ebenen machen das schwer.
 
 ## Fix templates
-`Ändere <h{{from}}> zu <h{{to}}>` for skipped levels; `Füge genau eine <h1> mit dem Seitentitel hinzu` for `no-h1`.
+No code; text only:
+- `skipped-level`: `Ändere <h{{from}}> zu <h{{to}}>.` (`from` = found level, `to` = previous level + 1)
+- `no-h1`: `Füge genau eine <h1> mit dem Seitentitel hinzu.`
+- `multi-h1`: `Behalte nur eine <h1> und mache die anderen zu <h2>.`
+- `empty`: `Gib der Überschrift einen Text oder entferne das leere Element.`
 
 ## Acceptance
 - A4-1: h1,h2,h3 passes. A4-2: h1,h3 fails (`skipped-level`). A4-3: two h1 fail. A4-4: empty `<h2></h2>` fails.
+- A4-F: every finding carries a fix (origin `template`, non-empty German text); page values in the code are HTML-escaped.

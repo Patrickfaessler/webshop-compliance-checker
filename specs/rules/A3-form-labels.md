@@ -19,9 +19,12 @@ URL, selector, snippet (input tag), `type`, `name`.
 Dieses Eingabefeld hat keine Beschriftung, die ein Screenreader vorlesen kann. Nutzer wissen nicht, was sie eintragen sollen.
 
 ## Fix templates
-`<label for="{{id}}">{{labelText}}</label>` placed before the field; `labelText` derived from `placeholder` or `name` when available, else a placeholder with note. Adds `id` if missing.
+Text: `Gib dem Feld eine sichtbare Beschriftung.` Code: `<label for="{{id}}">{{labelText}}</label>`, placed before the field.
+- `labelText` from `placeholder`, else from `name` (capitalised, `_`/`-` as spaces), else `Beschriftung` with note `Beschriftungstext bitte anpassen.`
+- `id` from the field; if it has none, from `name`, else `feld-{{n}}` (n counts such fields per page from 1); then a second code line `id="{{id}}" am Feld ergänzen`.
 
 ## Acceptance
 - A3-1: input without label fails; with `<label for>` passes.
 - A3-2: placeholder-only fails.
 - A3-3: `aria-label` passes.
+- A3-F: every finding carries a fix (origin `template`, non-empty German text); page values in the code are HTML-escaped.

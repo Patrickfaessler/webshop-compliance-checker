@@ -73,6 +73,13 @@ printed from the same HTML (ADR-7). It builds on the JSON report (`internal/repo
 - **RP-11 Fallback.** Without a browser (or if printing fails) the existing text PDF (`fpdf`) is served, so the
   download never breaks.
 
+## Fix block (RP-13)
+
+- **RP-13** Every finding card shows the block "So können Sie es beheben (Vorlage)" with the fix text, the code in
+  `<pre><code>` (escaped) and the note (F8, D-3). The JSON report has `explanationDe` and `fix`
+  (`origin`, `textDe`, `code`, `noteDe`) per finding (additive, `version` stays 1). The fpdf fallback prints
+  "Vorschlag: …" and the code line.
+
 ## Rendering limits (RP-12)
 
 - **RP-12 Cache and concurrency.** A finished scan never changes, so the HTML report and the printed PDF are rendered
