@@ -62,9 +62,11 @@ type Meta struct {
 
 // Page is one crawled, rendered page.
 type Page struct {
-	URL  string
-	HTML string     // rendered DOM serialised
-	Axe  *AxeReport // nil if axe-core did not run on this page (no browser)
+	URL string
+	// RequestedURL is the URL the crawler asked for, before redirects (C-2); equal to URL without a redirect.
+	RequestedURL string
+	HTML         string     // rendered DOM serialised
+	Axe          *AxeReport // nil if axe-core did not run on this page (no browser)
 	// Keyboard is the A5 probe result; nil = not probed (not in the sample, no browser, probe failed).
 	Keyboard *KeyboardReport
 }

@@ -157,7 +157,7 @@ func loadPages(t *testing.T, dir string, sess *crawler.Session) rules.Input {
 		if err != nil {
 			t.Fatal(err)
 		}
-		url := "file://" + filepath.Base(f)
+		url := "file:///corpus/" + filepath.Base(f) // a real path, so relative links between case pages resolve
 		if sess == nil {
 			in.Pages = append(in.Pages, rules.Page{URL: url, HTML: string(b)})
 			continue
