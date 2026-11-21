@@ -7,7 +7,11 @@ import (
 	"strings"
 	"time"
 
+	"golang.org/x/net/html"
+
+	"compliancechecker/internal/domutil"
 	"compliancechecker/internal/fetch"
+	"compliancechecker/internal/lexicon"
 	"compliancechecker/internal/rules"
 )
 
@@ -43,14 +47,43 @@ var priorityWords = []string{
 	"checkout", "kasse", "cart", "warenkorb", "kontakt", "contact",
 }
 
-func priority(u string) int {
+// priority is 0 for a link whose URL or anchor text (lowercase) contains a priority word, else 1.
+// legalWords are the legal-page link words of the lexicon (R1/R2/R5), so the crawler and the rules agree.
+var legalWords = lexicon.PriorityWords()
+
+func priority(u, text string) int {
 	l := strings.ToLower(u)
-	for _, w := range priorityWords {
-		if strings.Contains(l, w) {
+	if d, err := url.PathUnescape(l); err == nil {
+		l = d
+	}
+	for _, w := range append(priorityWords, legalWords...) {
+		if strings.Contains(l, w) || strings.Contains(text, w) {
 			return 0
 		}
 	}
 	return 1
+}
+
+// linkTexts maps each normalised link of a page to its anchor text, lowercased and whitespace-collapsed (C-2).
+func linkTexts(baseURL, htmlSrc string) map[string]string {
+	out := map[string]string{}
+	domutil.Walk(domutil.Parse(htmlSrc), func(n *html.Node) bool {
+		if !domutil.IsElement(n, "a") {
+			return true
+		}
+		href, ok := domutil.Attr(n, "href")
+		if !ok {
+			return true
+		}
+		if l, ok := normalizeLink(baseURL, href); ok {
+			t := strings.ToLower(strings.Join(strings.Fields(domutil.Text(n)), " "))
+			if out[l] == "" {
+				out[l] = t
+			}
+		}
+		return false
+	})
+	return out
 }
 
 // Crawl visits up to opt.MaxPages pages of the start URL's site, breadth first, legal links first.
@@ -138,9 +171,11 @@ func (c *Crawler) Crawl(ctx context.Context, startURL string, opt Options, robot
 		if fu, err := url.Parse(r.FinalURL); err != nil || !same(fu.Hostname()) || r.Status >= 400 {
 			continue // redirected off-site or error page
 		}
+		r.Page.RequestedURL = it.url
 		res.Pages = append(res.Pages, r.Page)
 
 		if it.depth < opt.MaxDepth {
+			texts := linkTexts(r.FinalURL, r.Page.HTML)
 			for _, href := range r.Links {
 				n, ok := normalizeLink(r.FinalURL, href)
 				if !ok || seen[pageKey(n)] {
@@ -152,7 +187,7 @@ func (c *Crawler) Crawl(ctx context.Context, startURL string, opt Options, robot
 				}
 				seen[pageKey(n)] = true
 				next := item{n, it.depth + 1}
-				if priority(n) == 0 {
+				if priority(n, texts[n]) == 0 {
 					hi = append(hi, next)
 				} else {
 					lo = append(lo, next)

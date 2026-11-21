@@ -8,7 +8,10 @@
     "A3": "passed",
     "A4": "passed",
     "A5": "passed",
-    "A6": "passed"
+    "A6": "passed",
+    "R1": "passed",
+    "R2": "passed",
+    "R5": "passed"
   },
   "expectedScore": 100,
   "pages": [
@@ -26,5 +29,5 @@
     "widerruf.html"
   ],
   "planted": [],
-  "note": "expected/expectedScore cover the implemented rules (A1-A6). R-rule defects are planted and listed for later; the scanner does not check them yet."
+  "note": "expected/expectedScore cover the implemented rules (A1-A6, R1, R2, R5). Other R-rule defects are planted and listed for later."
 }

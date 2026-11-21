@@ -23,6 +23,9 @@ import (
 	"compliancechecker/internal/rules/a4"
 	"compliancechecker/internal/rules/a5"
 	"compliancechecker/internal/rules/a6"
+	"compliancechecker/internal/rules/r1"
+	"compliancechecker/internal/rules/r2"
+	"compliancechecker/internal/rules/r5"
 	"compliancechecker/internal/scoring"
 )
 
@@ -63,7 +66,7 @@ func TestShops(t *testing.T) {
 	srv := httptest.NewServer(http.FileServer(http.Dir(siteDir)))
 	defer srv.Close()
 
-	ruleList := []rules.Rule{a1.New(), a2.New(), a3.New(), a4.New(), a5.New(), a6.New()}
+	ruleList := []rules.Rule{a1.New(), a2.New(), a3.New(), a4.New(), a5.New(), a6.New(), r1.New(), r2.New(), r5.New()}
 	dirs, _ := filepath.Glob(filepath.Join(siteDir, "*", "expected.json"))
 	if len(dirs) == 0 {
 		t.Fatal("no shops found")

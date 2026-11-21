@@ -41,11 +41,11 @@ func TestNormalizeLink(t *testing.T) {
 
 func TestPriority(t *testing.T) {
 	for _, u := range []string{"https://s.at/Impressum", "https://s.at/datenschutz", "https://s.at/de/agb", "https://s.at/checkout"} {
-		if priority(u) != 0 {
+		if priority(u, "") != 0 {
 			t.Errorf("%s should be high priority", u)
 		}
 	}
-	if priority("https://s.at/produkt/tshirt") != 1 {
+	if priority("https://s.at/produkt/tshirt", "") != 1 {
 		t.Error("product page is normal priority")
 	}
 }
@@ -266,5 +266,83 @@ func TestPageKey(t *testing.T) {
 	}
 	if pageKey("https://s.at/?p=1") == pageKey("https://s.at/?p=2") {
 		t.Error("different queries must differ")
+	}
+}
+
+// Spec: C-2 — a link whose text names a legal page is visited first, whatever its URL.
+func TestPriorityByLinkText(t *testing.T) {
+	if priority("https://s.at/p/123", "impressum") != 0 {
+		t.Error("link text impressum should be high priority")
+	}
+	if priority("https://s.at/p/123", "lampe") != 1 {
+		t.Error("product link is normal priority")
+	}
+	if priority("https://s.at/agb", "") != 0 {
+		t.Error("URL match still counts")
+	}
+}
+
+// Spec: C-2 — anchor texts by normalised link.
+func TestLinkTexts(t *testing.T) {
+	got := linkTexts("https://s.at/", `<a href="/p/1"> Impressum </a><a href="x.html#top">AGB</a><a>no href</a>`)
+	want := map[string]string{"https://s.at/p/1": "impressum", "https://s.at/x.html": "agb"}
+	if len(got) != len(want) {
+		t.Fatalf("got %v, want %v", got, want)
+	}
+	for k, v := range want {
+		if got[k] != v {
+			t.Errorf("%s: got %q, want %q", k, got[k], v)
+		}
+	}
+}
+
+// Spec: C-2 — the crawler records the URL it asked for before redirects.
+func TestCrawlRecordsRequestedURL(t *testing.T) {
+	if _, err := FindBrowser(""); err != nil {
+		t.Skip("no browser installed")
+	}
+	mux := http.NewServeMux()
+	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path != "/" {
+			http.NotFound(w, r)
+			return
+		}
+		_, _ = w.Write([]byte(`<html lang="de"><body><footer><a href="/impressum">Impressum</a></footer></body></html>`))
+	})
+	mux.HandleFunc("/impressum", func(w http.ResponseWriter, r *http.Request) { http.Redirect(w, r, "/impressum/", http.StatusFound) })
+	mux.HandleFunc("/impressum/", func(w http.ResponseWriter, _ *http.Request) {
+		_, _ = w.Write([]byte(`<html lang="de"><body><h1>Impressum</h1></body></html>`))
+	})
+	srv := httptest.NewServer(mux)
+	defer srv.Close()
+	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
+	defer cancel()
+	opt := Options{MaxPages: 5, MaxDepth: 2, PageTimeout: 20 * time.Second, MinInterval: 10 * time.Millisecond}
+	res, err := (&Crawler{Validate: allowLoopback}).Crawl(ctx, srv.URL+"/", opt, fakeGetter{""}, nil)
+	if err != nil {
+		t.Skipf("crawl failed (browser problem?): %v", err)
+	}
+	var found bool
+	for _, p := range res.Pages {
+		if strings.HasSuffix(p.URL, "/impressum/") {
+			found = true
+			if !strings.HasSuffix(p.RequestedURL, "/impressum") {
+				t.Errorf("RequestedURL = %q", p.RequestedURL)
+			}
+		} else if p.RequestedURL != p.URL {
+			t.Errorf("%s: RequestedURL = %q, want the URL itself", p.URL, p.RequestedURL)
+		}
+	}
+	if !found {
+		t.Fatalf("impressum not crawled: %+v", res.Pages)
+	}
+}
+
+// Spec: C-2 — the crawler's priority words include the legal lexicon.
+func TestPriorityFromLexicon(t *testing.T) {
+	for _, text := range []string{"rechtliches", "rücktrittsrecht", "anbieterkennzeichnung", "verkaufsbedingungen", "refund policy"} {
+		if priority("https://s.at/p/1", text) != 0 {
+			t.Errorf("%s should be high priority", text)
+		}
 	}
 }

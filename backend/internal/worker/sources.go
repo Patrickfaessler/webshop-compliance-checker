@@ -44,5 +44,5 @@ func (f FetchSource) Pages(ctx context.Context, startURL string, _ crawler.Keybo
 	if progress != nil {
 		progress(1, 1)
 	}
-	return []rules.Page{{URL: p.FinalURL, HTML: string(p.Body)}}, false, nil
+	return []rules.Page{{URL: p.FinalURL, RequestedURL: startURL, HTML: string(p.Body)}}, false, nil
 }

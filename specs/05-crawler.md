@@ -26,6 +26,11 @@ Read "Playwright" in this file as "headless Chromium via chromedp".
 4. Cart page.
 5. Checkout: **only in our own test shop**. For other shops, checkout is read only if reachable without input (C-3).
 
+## Legal links (C-2 addition, 2026-11-21)
+
+Links whose URL **or link text** matches a priority word are visited first; each page records the URL requested before
+redirects (`RequestedURL`), so rules can match a link to the page it led to.
+
 ## Checkout (C-3)
 
 - Test shop: add a test product, fill test data, advance to the last step, record the order button label, **stop before submit**.
