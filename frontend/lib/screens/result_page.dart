@@ -14,8 +14,8 @@ typedef Downloader = Future<bool> Function(Uri uri);
 /// Default downloader: the API answers with `Content-Disposition: attachment`, so opening the URL in the
 /// same tab downloads the file and the page stays where it is. The visual HTML report without `download`
 /// is shown, so it opens in a new tab (F14).
-Future<bool> launchDownload(Uri uri) => launchUrl(uri,
-    webOnlyWindowName: isReportView(uri) ? '_blank' : '_self');
+Future<bool> launchDownload(Uri uri) =>
+    launchUrl(uri, webOnlyWindowName: isReportView(uri) ? '_blank' : '_self');
 
 /// True for the HTML report URL that shows the report instead of downloading it.
 bool isReportView(Uri uri) =>
@@ -187,6 +187,12 @@ class _ResultPageState extends State<ResultPage> {
       ),
       const SizedBox(height: 24),
       if (f != null) ...[
+        if (f.ruleResults.any((r) => r.ruleId == 'A5'))
+          Padding(
+            padding: const EdgeInsets.only(bottom: 16),
+            child: Text(keyboardLineDe(s.keyboardAllPages,
+                s.keyboardPagesProbed, s.keyboardMaxPresses)),
+          ),
         Text('Prüfregeln', style: theme.textTheme.titleLarge),
         const SizedBox(height: 8),
         if (f.ruleResults.isEmpty)
@@ -332,10 +338,17 @@ class _RuleTile extends StatelessWidget {
       contentPadding: EdgeInsets.zero,
       leading: Icon(icon, color: color, semanticLabel: label),
       title: Text('${result.ruleId} · ${ruleNameDe(result.ruleId)}'),
-      subtitle: Text(
-        result.state == 'failed' && result.pagesAffected > 0
-            ? '$label · ${result.pagesAffected} Seite(n) betroffen'
-            : label,
+      subtitle: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            result.state == 'failed' && result.pagesAffected > 0
+                ? '$label · ${result.pagesAffected} Seite(n) betroffen'
+                : label,
+          ),
+          if (result.noteDe != null && result.noteDe!.isNotEmpty)
+            Text(result.noteDe!), // A5-7
+        ],
       ),
     );
   }

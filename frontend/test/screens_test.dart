@@ -8,6 +8,10 @@ import 'package:flutter_test/flutter_test.dart';
 import 'fake_api.dart';
 
 Future<void> openApp(WidgetTester tester, FakeApi api) async {
+  // The start page is longer than the default 800×600 test view (A5 options); a ListView only builds what is visible.
+  tester.view.physicalSize = const Size(900, 1600);
+  tester.view.devicePixelRatio = 1;
+  addTearDown(tester.view.reset);
   await tester.pumpWidget(App(api: api));
   await tester.pumpAndSettle();
 }
@@ -36,7 +40,7 @@ void main() {
     // Spec: F1 — at least one area is required.
     testWidgets('no area selected shows an error', (tester) async {
       await openApp(tester, FakeApi());
-      await tester.enterText(find.byType(TextField), 'shop.at');
+      await tester.enterText(find.byType(TextField).first, 'shop.at');
       await tester.tap(find.text('Barrierefreiheit (WCAG 2.1 AA)'));
       await tester.tap(find.text('Rechtliche Pflichtangaben (EU-Ebene)'));
       await tester.tap(find.text('Jetzt prüfen'));
@@ -50,7 +54,7 @@ void main() {
         (tester) async {
       final api = FakeApi(statuses: [statusOf('new123', 'queued')]);
       await openApp(tester, api);
-      await tester.enterText(find.byType(TextField), 'mein-shop.at');
+      await tester.enterText(find.byType(TextField).first, 'mein-shop.at');
       await tester.tap(find.text('Jetzt prüfen'));
       await tester.pump();
       await tester.pump();
@@ -63,6 +67,45 @@ void main() {
       await tester.pumpWidget(const SizedBox());
     });
 
+    // Spec: F1, A5-8 — the A5 all-pages option needs the accessibility area.
+    testWidgets('keyboard option is disabled without accessibility',
+        (tester) async {
+      await openApp(tester, FakeApi());
+      CheckboxListTile tile() =>
+          tester.widget<CheckboxListTile>(find.widgetWithText(CheckboxListTile,
+              'Gründliche Tastaturprüfung auf allen Seiten (dauert bis zu 10 Minuten)'));
+      expect(tile().onChanged, isNotNull);
+      await tester.tap(find.text('Barrierefreiheit (WCAG 2.1 AA)'));
+      await tester.pump();
+      expect(tile().onChanged, isNull);
+    });
+
+    // Spec: A5-8 — the Tab limit defaults to 200 and must be 50–1000.
+    testWidgets('Tab limit is validated and sent with the all-pages option',
+        (tester) async {
+      final api = FakeApi(statuses: [statusOf('new123', 'queued')]);
+      await openApp(tester, api);
+      final presses = find.widgetWithText(TextField, 'Tab-Drücke pro Seite');
+      expect(tester.widget<TextField>(presses).controller!.text, '200');
+      await tester.enterText(find.byType(TextField).first, 'mein-shop.at');
+      await tester.enterText(presses, '40');
+      await tester.tap(find.text('Jetzt prüfen'));
+      await tester.pump();
+      expect(find.text('Bitte eine Zahl von 50 bis 1000 eingeben.'),
+          findsOneWidget);
+      expect(api.createdUrl, isNull);
+
+      await tester.enterText(presses, '500');
+      await tester.tap(find.text(
+          'Gründliche Tastaturprüfung auf allen Seiten (dauert bis zu 10 Minuten)'));
+      await tester.tap(find.text('Jetzt prüfen'));
+      await tester.pump();
+      await tester.pump();
+      expect(api.createdKeyboardAllPages, isTrue);
+      expect(api.createdKeyboardMaxPresses, 500);
+      await tester.pumpWidget(const SizedBox());
+    });
+
     // Spec: F1 / C-SSRF — a server problem title is shown to the user.
     testWidgets('API problem message is displayed', (tester) async {
       final api = FakeApi(
@@ -70,7 +113,7 @@ void main() {
               'Diese Adresse konnte nicht geprüft werden.',
               status: 400));
       await openApp(tester, api);
-      await tester.enterText(find.byType(TextField), 'http://127.0.0.1');
+      await tester.enterText(find.byType(TextField).first, 'http://127.0.0.1');
       await tester.tap(find.text('Jetzt prüfen'));
       await tester.pump();
       await tester.pump();
@@ -81,10 +124,17 @@ void main() {
 
   group('ResultPage', () {
     Future<void> openResult(WidgetTester tester, FakeApi api) async {
+      // the submit button sits below the default 800×600 view since the A5 options were added
+      if (tester.view.devicePixelRatio != 1) {
+        // not set by the test itself
+        tester.view.physicalSize = const Size(900, 1600);
+        tester.view.devicePixelRatio = 1;
+        addTearDown(tester.view.reset);
+      }
       await tester.pumpWidget(App(api: api));
       await tester.pumpAndSettle();
       // jump straight to a result by creating a scan
-      await tester.enterText(find.byType(TextField), 'shop.at');
+      await tester.enterText(find.byType(TextField).first, 'shop.at');
       await tester.tap(find.text('Jetzt prüfen'));
       await tester.pump();
       await tester.pump();
@@ -152,6 +202,33 @@ void main() {
       expect(find.textContaining("bis $until Uhr"), findsOneWidget);
       expect(find.text("Bericht als PDF"), findsOneWidget);
       expect(find.text("Daten als JSON"), findsOneWidget);
+    });
+
+    // Spec: RP-6, A5-7 — the result page names the A5 mode and shows rule notes.
+    testWidgets('A5 mode line and rule note', (tester) async {
+      tester.view.physicalSize = const Size(900, 3000);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.reset);
+      final api = FakeApi(
+        statuses: [
+          statusOf('new123', 'done', score: 100, keyboardPagesProbed: 3)
+        ],
+        findings: const ScanFindings(ruleResults: [
+          RuleResult(
+              ruleId: 'A5',
+              state: 'passed',
+              decidedBy: 'structural',
+              pagesAffected: 0,
+              noteDe: 'Limit erreicht.'),
+        ], findings: []),
+      );
+      await openResult(tester, api);
+      await tester.pumpAndSettle();
+      expect(
+          find.text(
+              'Tastaturprüfung: Stichprobe (3 Seiten), bis zu 200 Tab-Drücke pro Seite'),
+          findsOneWidget);
+      expect(find.text('Limit erreicht.'), findsOneWidget);
     });
 
     // Spec: S-1 — no score is shown as "nicht berechenbar", never as compliant.

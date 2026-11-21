@@ -52,3 +52,7 @@ String formatTimeDe(DateTime d) {
   String two(int n) => n.toString().padLeft(2, '0');
   return '${two(l.hour)}:${two(l.minute)}';
 }
+
+/// A5 mode line on the result page (RP-6).
+String keyboardLineDe(bool allPages, int pages, int presses) =>
+    'Tastaturprüfung: ${allPages ? 'alle Seiten' : 'Stichprobe'} ($pages Seiten), bis zu $presses Tab-Drücke pro Seite';

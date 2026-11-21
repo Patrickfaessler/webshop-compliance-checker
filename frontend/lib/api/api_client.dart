@@ -15,6 +15,9 @@ class ScanStatus {
     required this.errorDe,
     required this.disclaimerDe,
     required this.expiresAt,
+    this.keyboardAllPages = false,
+    this.keyboardMaxPresses = 200,
+    this.keyboardPagesProbed = 0,
   });
 
   final String id;
@@ -25,6 +28,11 @@ class ScanStatus {
   final String? errorDe;
   final String? disclaimerDe;
   final DateTime? expiresAt;
+
+  /// A5 keyboard probe: mode "alle Seiten", Tab limit, pages with a keyboard result.
+  final bool keyboardAllPages;
+  final int keyboardMaxPresses;
+  final int keyboardPagesProbed;
 
   bool get isFinished =>
       status == 'done' || status == 'incomplete' || status == 'failed';
@@ -41,6 +49,9 @@ class ScanStatus {
         expiresAt: j['expiresAt'] == null
             ? null
             : DateTime.tryParse(j['expiresAt'] as String),
+        keyboardAllPages: (j['keyboardAllPages'] as bool?) ?? false,
+        keyboardMaxPresses: (j['keyboardMaxPresses'] as num?)?.toInt() ?? 200,
+        keyboardPagesProbed: (j['keyboardPagesProbed'] as num?)?.toInt() ?? 0,
       );
 }
 
@@ -49,18 +60,23 @@ class RuleResult {
       {required this.ruleId,
       required this.state,
       required this.decidedBy,
-      required this.pagesAffected});
+      required this.pagesAffected,
+      this.noteDe});
 
   final String ruleId;
   final String state; // passed | failed | not_applicable | not_assessable
   final String decidedBy;
   final int pagesAffected;
 
+  /// German note on the result, e.g. A5 limit reached (A5-7).
+  final String? noteDe;
+
   factory RuleResult.fromJson(Map<String, dynamic> j) => RuleResult(
         ruleId: j['ruleId'] as String,
         state: j['state'] as String,
         decidedBy: (j['decidedBy'] as String?) ?? '',
         pagesAffected: (j['pagesAffected'] as num?)?.toInt() ?? 0,
+        noteDe: j['noteDe'] as String?,
       );
 }
 
@@ -117,7 +133,9 @@ class ApiException implements Exception {
 }
 
 abstract class ApiClient {
-  Future<ScanStatus> createScan(String url, List<String> areas);
+  /// [keyboardAllPages] and [keyboardMaxPresses] are the A5 options (A5-6, A5-8).
+  Future<ScanStatus> createScan(String url, List<String> areas,
+      {bool keyboardAllPages = false, int keyboardMaxPresses = 200});
   Future<ScanStatus> getScan(String id);
   Future<ScanFindings> getFindings(String id);
 
@@ -141,11 +159,17 @@ class HttpApiClient implements ApiClient {
   final String _base;
 
   @override
-  Future<ScanStatus> createScan(String url, List<String> areas) async {
+  Future<ScanStatus> createScan(String url, List<String> areas,
+      {bool keyboardAllPages = false, int keyboardMaxPresses = 200}) async {
     final json = await _send(() => _http.post(
           Uri.parse('$_base/api/scans'),
           headers: {'Content-Type': 'application/json'},
-          body: jsonEncode({'url': url, 'areas': areas}),
+          body: jsonEncode({
+            'url': url,
+            'areas': areas,
+            'keyboardAllPages': keyboardAllPages,
+            'keyboardMaxPresses': keyboardMaxPresses,
+          }),
         ));
     return ScanStatus.fromJson(json);
   }

@@ -13,7 +13,7 @@ Future<void> openFinished(
   addTearDown(tester.view.reset);
   await tester.pumpWidget(App(api: api, onDownload: dl));
   await tester.pumpAndSettle();
-  await tester.enterText(find.byType(TextField), 'shop.at');
+  await tester.enterText(find.byType(TextField).first, 'shop.at');
   await tester.tap(find.text('Jetzt prüfen'));
   await tester.pumpAndSettle();
 }
