@@ -4,6 +4,8 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"image"
+	"image/jpeg"
 	"net/http"
 	"net/http/httptest"
 	"net/netip"
@@ -343,8 +345,12 @@ func TestClientKeyBehindProxy(t *testing.T) {
 func TestFindingsCarryRuleNote(t *testing.T) {
 	e := newEnv(3, 3)
 	id := runScan(t, e)
-	if body := e.do("GET", "/api/scans/"+id+"/findings", "").Body.String(); strings.Contains(body, "noteDe") {
-		t.Fatalf("empty note must be omitted: %s", body)
+	var out struct {
+		RuleResults []map[string]any `json:"ruleResults"`
+	}
+	decode(t, e.do("GET", "/api/scans/"+id+"/findings", ""), &out)
+	if _, has := out.RuleResults[0]["noteDe"]; has {
+		t.Fatalf("empty rule note must be omitted: %v", out.RuleResults[0])
 	}
 	e.st.Update(id, func(s *scan.Scan) { s.RuleResults[0].NoteDe = "Hinweis X" })
 	if body := e.do("GET", "/api/scans/"+id+"/findings", "").Body.String(); !strings.Contains(body, `"noteDe":"Hinweis X"`) {
@@ -398,5 +404,68 @@ func TestStatusKeyboardPagesProbed(t *testing.T) {
 	decode(t, e.do("GET", "/api/scans/"+id, ""), &st)
 	if st.KeyboardPagesProbed != 2 {
 		t.Errorf("keyboardPagesProbed = %d", st.KeyboardPagesProbed)
+	}
+}
+
+// Spec: F8, A3-F — the findings JSON carries the detail fields and the fix (origin template).
+func TestFindingsDetailFields(t *testing.T) {
+	e := newEnv(3, 3)
+	id := runScan(t, e)
+	e.st.Update(id, func(s *scan.Scan) {
+		s.Findings = []scan.Finding{{ID: id + "-A3-1", RuleID: "A3", Severity: rules.Critical, URL: "https://shop.example/",
+			Selector: "#plz", Snippet: `<input id="plz">`, Sub: "placeholder-only", SummaryDe: "s", ExplanationDe: "e",
+			Fix: &rules.Fix{TextDe: "t", Code: "c"}}}
+	})
+	var out struct {
+		Findings []map[string]any `json:"findings"`
+	}
+	decode(t, e.do("GET", "/api/scans/"+id+"/findings", ""), &out)
+	if len(out.Findings) != 1 {
+		t.Fatalf("findings = %v", out.Findings)
+	}
+	f := out.Findings[0]
+	fix, _ := f["fix"].(map[string]any)
+	if fix["origin"] != "template" || fix["textDe"] != "t" || fix["code"] != "c" || f["explanationDe"] != "e" ||
+		f["selector"] != "#plz" || f["snippet"] != `<input id="plz">` || f["sub"] != "placeholder-only" || f["hasCrop"] != false {
+		t.Errorf("finding JSON = %v", f)
+	}
+	if _, has := fix["noteDe"]; has {
+		t.Errorf("empty note must be omitted: %v", fix)
+	}
+}
+
+// Spec: F8 — the crop of a finding is served as JPEG; no box, unknown finding or scan → 404 (Review Focus 3).
+func TestFindingCrop(t *testing.T) {
+	e := newEnv(3, 3)
+	id := runScan(t, e)
+	var buf bytes.Buffer
+	if err := jpeg.Encode(&buf, image.NewRGBA(image.Rect(0, 0, 200, 200)), nil); err != nil {
+		t.Fatal(err)
+	}
+	e.st.Update(id, func(s *scan.Scan) {
+		s.Shots = []scan.Shot{{URL: "https://shop.example/", Image: buf.Bytes(), Width: 200, Height: 200, ViewportWidth: 200}}
+		s.Findings = []scan.Finding{
+			{ID: "f1", RuleID: "A3", URL: "https://shop.example/", Position: "element", Box: &scan.Box{X: 10, Y: 10, Width: 50, Height: 20}},
+			{ID: "f2", RuleID: "A3", URL: "https://shop.example/"},
+		}
+	})
+	rec := e.do("GET", "/api/scans/"+id+"/findings/f1/crop.jpg", "")
+	if rec.Code != 200 || rec.Header().Get("Content-Type") != "image/jpeg" {
+		t.Fatalf("crop: %d %s", rec.Code, rec.Header().Get("Content-Type"))
+	}
+	if _, err := jpeg.Decode(rec.Body); err != nil {
+		t.Errorf("crop is not a JPEG: %v", err)
+	}
+	var out struct {
+		Findings []map[string]any `json:"findings"`
+	}
+	decode(t, e.do("GET", "/api/scans/"+id+"/findings", ""), &out)
+	if out.Findings[0]["hasCrop"] != true || out.Findings[1]["hasCrop"] != false {
+		t.Errorf("hasCrop = %v / %v", out.Findings[0]["hasCrop"], out.Findings[1]["hasCrop"])
+	}
+	for _, p := range []string{"/api/scans/" + id + "/findings/f2/crop.jpg", "/api/scans/" + id + "/findings/nope/crop.jpg", "/api/scans/nope/findings/f1/crop.jpg"} {
+		if c := e.do("GET", p, "").Code; c != http.StatusNotFound {
+			t.Errorf("%s: %d, want 404", p, c)
+		}
 	}
 }
