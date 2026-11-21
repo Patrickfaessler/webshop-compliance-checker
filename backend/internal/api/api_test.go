@@ -337,3 +337,16 @@ func TestClientKeyBehindProxy(t *testing.T) {
 		t.Fatal("without the header the proxy address is the key")
 	}
 }
+
+// Spec: A5-7, 08-api RuleResult.noteDe — the rule note is in the findings JSON, and absent when empty.
+func TestFindingsCarryRuleNote(t *testing.T) {
+	e := newEnv(3, 3)
+	id := runScan(t, e)
+	if body := e.do("GET", "/api/scans/"+id+"/findings", "").Body.String(); strings.Contains(body, "noteDe") {
+		t.Fatalf("empty note must be omitted: %s", body)
+	}
+	e.st.Update(id, func(s *scan.Scan) { s.RuleResults[0].NoteDe = "Hinweis X" })
+	if body := e.do("GET", "/api/scans/"+id+"/findings", "").Body.String(); !strings.Contains(body, `"noteDe":"Hinweis X"`) {
+		t.Fatalf("note missing: %s", body)
+	}
+}

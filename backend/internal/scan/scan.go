@@ -34,6 +34,7 @@ type RuleResult struct {
 	State         rules.State
 	DecidedBy     rules.DecidedBy
 	PagesAffected int
+	NoteDe        string // A5-7
 }
 
 type Finding struct {

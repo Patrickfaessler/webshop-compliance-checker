@@ -42,6 +42,7 @@ type countView struct {
 type ruleView struct {
 	ID, NameDe, SeverityDe, SevClass, StateDe, StateClass string
 	Pages                                                 string
+	NoteDe                                                string // A5-7
 }
 
 type sectionView struct {
@@ -106,6 +107,7 @@ func (r Report) HTML() ([]byte, error) {
 		v.Rules = append(v.Rules, ruleView{
 			ID: rr.RuleID, NameDe: rr.NameDe, SeverityDe: severityDe(rr.Severity), SevClass: sevClass(rr.Severity),
 			StateDe: stateDe(rr.State), StateClass: "st-" + strings.ReplaceAll(rr.State, "_", "-"), Pages: pages,
+			NoteDe: rr.NoteDe,
 		})
 	}
 	for _, s := range []string{"passed", "failed", "not_applicable", "not_assessable"} {

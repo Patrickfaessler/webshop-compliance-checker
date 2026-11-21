@@ -140,3 +140,26 @@ func TestRunSourceFailure(t *testing.T) {
 		})
 	}
 }
+
+// noteRule passes with a German note.
+type noteRule struct{}
+
+func (noteRule) Meta() rules.Meta {
+	return rules.Meta{ID: "A5", Area: "accessibility", Severity: rules.Critical}
+}
+func (noteRule) Check(context.Context, rules.Input) (rules.Result, error) {
+	return rules.Result{State: rules.Passed, DecidedBy: rules.DecidedStructural, NoteDe: "Hinweis X"}, nil
+}
+
+// Spec: A5-7 — the note of a rule result is stored with the scan.
+func TestRunCopiesRuleNote(t *testing.T) {
+	var released []string
+	r, st := newRunner(fakeSource{pages: []rules.Page{page(`<html lang="de"><body></body></html>`)}}, &released)
+	r.Rules = []rules.Rule{noteRule{}}
+	seed(t, st, "accessibility")
+	r.Run(context.Background(), Job{ScanID: "s1", ClientKey: "k"})
+	s, _ := st.Get("s1")
+	if len(s.RuleResults) != 1 || s.RuleResults[0].NoteDe != "Hinweis X" {
+		t.Fatalf("rule results = %+v", s.RuleResults)
+	}
+}

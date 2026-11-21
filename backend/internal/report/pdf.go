@@ -162,6 +162,9 @@ func (r Report) PDF(opt PDFOptions) ([]byte, error) {
 			pdf.CellFormat(c.w, 7, tr(vals[i]), "1", 0, "L", false, 0, "")
 		}
 		pdf.Ln(-1)
+		if rr.NoteDe != "" { // A5-7
+			pdf.MultiCell(width, 5, tr("Hinweis zu "+rr.RuleID+": "+rr.NoteDe), "1", "L", false)
+		}
 	}
 
 	// findings

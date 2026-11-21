@@ -69,6 +69,7 @@ type RuleResult struct {
 	State         string `json:"state"`
 	DecidedBy     string `json:"decidedBy"`
 	PagesAffected int    `json:"pagesAffected"`
+	NoteDe        string `json:"noteDe,omitempty"` // A5-7
 }
 
 type Finding struct {
@@ -110,7 +111,7 @@ func Build(sc scan.Scan, metas map[string]rules.Meta, now time.Time) (Report, er
 		}
 		r.RuleResults = append(r.RuleResults, RuleResult{
 			RuleID: rr.RuleID, NameDe: name, Severity: string(m.Severity), State: string(rr.State),
-			DecidedBy: string(rr.DecidedBy), PagesAffected: rr.PagesAffected,
+			DecidedBy: string(rr.DecidedBy), PagesAffected: rr.PagesAffected, NoteDe: rr.NoteDe,
 		})
 	}
 	for _, f := range sc.Findings {

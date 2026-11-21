@@ -119,7 +119,7 @@ func (r *Runner) Run(ctx context.Context, job Job) {
 			})
 		}
 		results = append(results, scan.RuleResult{
-			RuleID: m.ID, State: res.State, DecidedBy: res.DecidedBy, PagesAffected: len(affected),
+			RuleID: m.ID, State: res.State, DecidedBy: res.DecidedBy, PagesAffected: len(affected), NoteDe: res.NoteDe,
 		})
 		outcomes = append(outcomes, scoring.Outcome{Severity: m.Severity, State: res.State})
 	}

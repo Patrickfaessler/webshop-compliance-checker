@@ -105,6 +105,7 @@ type Result struct {
 	State     State
 	DecidedBy DecidedBy
 	Findings  []Finding
+	NoteDe    string // German note on the result, e.g. A5 limit reached (A5-7); empty = none
 }
 
 // Rule is implemented by every check module (N5).

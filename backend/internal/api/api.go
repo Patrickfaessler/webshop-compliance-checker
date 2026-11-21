@@ -117,6 +117,7 @@ type ruleResultJSON struct {
 	State         string `json:"state"`
 	DecidedBy     string `json:"decidedBy"`
 	PagesAffected int    `json:"pagesAffected"`
+	NoteDe        string `json:"noteDe,omitempty"` // A5-7
 }
 
 type findingJSON struct {
@@ -234,6 +235,7 @@ func (s *Server) getFindings(w http.ResponseWriter, r *http.Request) {
 	for _, rr := range sc.RuleResults {
 		out.RuleResults = append(out.RuleResults, ruleResultJSON{
 			RuleID: rr.RuleID, State: string(rr.State), DecidedBy: string(rr.DecidedBy), PagesAffected: rr.PagesAffected,
+			NoteDe: rr.NoteDe,
 		})
 	}
 	for _, f := range sc.Findings {

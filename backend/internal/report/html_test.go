@@ -175,3 +175,31 @@ func TestPositionNoteOutside(t *testing.T) {
 		t.Errorf("outside note = %q", got)
 	}
 }
+
+// Spec: A5-7, RP-6 — a rule note appears under the rule name in HTML, text PDF and JSON; it is escaped.
+func TestReportShowsRuleNote(t *testing.T) {
+	sc := finished()
+	sc.RuleResults[0].NoteDe = "Limit <erreicht>"
+	r, err := Build(sc, nil, t0)
+	if err != nil {
+		t.Fatal(err)
+	}
+	doc, err := r.HTML()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(doc), `<p class="note">Limit &lt;erreicht&gt;</p>`) {
+		t.Error("note missing in HTML")
+	}
+	pdf, err := r.PDF(PDFOptions{Uncompressed: true})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !bytes.Contains(pdf, []byte("Limit <erreicht>")) {
+		t.Error("note missing in PDF")
+	}
+	js, _ := r.JSON()
+	if !bytes.Contains(js, []byte(`"noteDe": "Limit \u003cerreicht\u003e"`)) {
+		t.Errorf("note missing in JSON: %s", js)
+	}
+}
