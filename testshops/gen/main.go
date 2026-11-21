@@ -265,7 +265,8 @@ func productBody(s Shop, p Product) string {
     </form>
   </div>
 </div>
-`, e(p.Name), p.Slug, alt, e(p.Desc), e(p.Price), hint)
+<script type="application/ld+json">{"@context":"https://schema.org","@type":"Product","name":%q}</script>
+`, e(p.Name), p.Slug, alt, e(p.Desc), e(p.Price), hint, p.Name)
 	if s.Defects.DoubleH1OnProducts {
 		b.WriteString("<h1>Produktdetails</h1>\n") // A4: second h1
 	} else {
@@ -290,7 +291,15 @@ func cartBody(s Shop) string {
 %s
 <p>Zwischensumme: %s, zzgl. 4,90 € Versand.</p>
 <p><a class="button" href="kasse.html">Zur Kasse</a></p>
-`, e(p.Name), e(p.Price), second, e(p.Price))
+%s`, e(p.Name), e(p.Price), second, e(p.Price), voucher(s))
+}
+
+// voucher is the cart's voucher control: a real button, or the planted A5 defect (div with onclick).
+func voucher(s Shop) string {
+	if s.Defects.ClickableDivOnCart {
+		return `<div class="button" id="voucher" onclick="return false">Gutschein einlösen</div>` + "\n" // A5: not focusable
+	}
+	return `<p><button type="button" id="voucher">Gutschein einlösen</button></p>` + "\n"
 }
 
 func checkoutBody(s Shop) string {
@@ -436,8 +445,16 @@ nav a { margin-right: 16px; }
 .cart th, .cart td { border: 1px solid #d0d0d0; padding: 6px 10px; text-align: left; }
 footer.site { margin-top: 32px; padding-top: 16px; padding-bottom: 24px; border-top: 1px solid #d0d0d0; }
 .newsletter label { display: block; }
-.sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0; }
-`, s.Primary, s.Accent)
+%[3]s.sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0; }
+`, s.Primary, s.Accent, focusDefect(s))
+}
+
+// focusDefect is the planted A5 defect: buttons lose every focus indicator.
+func focusDefect(s Shop) string {
+	if !s.Defects.NoFocusStyleButtons {
+		return ""
+	}
+	return "button:focus, button:focus-visible { outline: none; } /* A5: planted, no focus indicator */\n"
 }
 
 // ---------- expected results ----------
@@ -498,6 +515,12 @@ func expected(s Shop, pages []page) Expected {
 	if d.SkipH2ToH4OnCategory {
 		add("kategorie-*.html", "A4", "h2 direkt gefolgt von h4")
 	}
+	if d.NoFocusStyleButtons {
+		add("alle Seiten", "A5", "Buttons ohne sichtbaren Fokus (outline: none)")
+	}
+	if d.ClickableDivOnCart {
+		add("warenkorb.html", "A5", "„Gutschein einlösen“ ist ein div mit onclick, nicht per Tastatur bedienbar")
+	}
 	if d.ImpressumNoEmail {
 		add("impressum.html", "R1", "E-Mail-Adresse fehlt")
 	}
@@ -531,7 +554,7 @@ func expected(s Shop, pages []page) Expected {
 	return Expected{
 		Shop: s.Name, StartPath: s.Slug + "/", Kind: s.Kind, Expected: s.Expected, ExpectedScore: s.ExpectedScore,
 		Pages: files, Planted: pl,
-		Note: "expected/expectedScore cover the implemented rules (A1-A4, A6). R-rule defects are planted and listed for later; the scanner does not check them yet.",
+		Note: "expected/expectedScore cover the implemented rules (A1-A6). R-rule defects are planted and listed for later; the scanner does not check them yet.",
 	}
 }
 

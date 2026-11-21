@@ -7,6 +7,7 @@
     "A2": "failed",
     "A3": "failed",
     "A4": "failed",
+    "A5": "failed",
     "A6": "failed"
   },
   "expectedScore": 0,
@@ -95,6 +96,16 @@
       "what": "leere h2-Überschrift"
     },
     {
+      "page": "alle Seiten",
+      "rule": "A5",
+      "what": "Buttons ohne sichtbaren Fokus (outline: none)"
+    },
+    {
+      "page": "warenkorb.html",
+      "rule": "A5",
+      "what": "„Gutschein einlösen“ ist ein div mit onclick, nicht per Tastatur bedienbar"
+    },
+    {
       "page": "impressum.html",
       "rule": "R1",
       "what": "E-Mail-Adresse fehlt"
@@ -130,5 +141,5 @@
       "what": "keine Funktion „Vertrag widerrufen“"
     }
   ],
-  "note": "expected/expectedScore cover the implemented rules (A1-A4, A6). R-rule defects are planted and listed for later; the scanner does not check them yet."
+  "note": "expected/expectedScore cover the implemented rules (A1-A6). R-rule defects are planted and listed for later; the scanner does not check them yet."
 }

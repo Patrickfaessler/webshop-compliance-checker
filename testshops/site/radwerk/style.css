@@ -29,4 +29,5 @@ nav a { margin-right: 16px; }
 .cart th, .cart td { border: 1px solid #d0d0d0; padding: 6px 10px; text-align: left; }
 footer.site { margin-top: 32px; padding-top: 16px; padding-bottom: 24px; border-top: 1px solid #d0d0d0; }
 .newsletter label { display: block; }
+button:focus, button:focus-visible { outline: none; } /* A5: planted, no focus indicator */
 .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0; }
