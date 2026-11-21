@@ -21,7 +21,8 @@ type Options struct {
 	MaxPages    int
 	MaxDepth    int
 	PageTimeout time.Duration
-	MinInterval time.Duration // minimum time between page loads (politeness, 2 req/s)
+	MinInterval time.Duration   // minimum time between page loads (politeness, 2 req/s)
+	Keyboard    KeyboardOptions // A5 probe mode and Tab limit
 }
 
 // DefaultOptions returns the MVP limits.
