@@ -35,7 +35,7 @@ func (Rule) Meta() rules.Meta {
 
 // Check combines axe-core (missing alt) with a DOM check for file-name alt texts (A2-3).
 func (Rule) Check(_ context.Context, in rules.Input) (rules.Result, error) {
-	res := axecheck.Check(axeIDs, in)
+	res := axecheck.Check(axeIDs, in, nil)
 	for _, p := range in.Pages {
 		res.Findings = append(res.Findings, fileNameFindings(p)...)
 	}

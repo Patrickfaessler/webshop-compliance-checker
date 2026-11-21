@@ -35,7 +35,7 @@ func TestCheck(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := Check(ids, rules.Input{Pages: tt.pages}).State; got != tt.want {
+			if got := Check(ids, rules.Input{Pages: tt.pages}, nil).State; got != tt.want {
 				t.Fatalf("state = %s, want %s", got, tt.want)
 			}
 		})
@@ -46,7 +46,7 @@ func TestFindingsCarryLocation(t *testing.T) {
 	rep := &rules.AxeReport{Violations: []rules.AxeResult{{ID: "label", Nodes: []rules.AxeNode{
 		{Selector: "input#q", HTML: `<input id="q">`}, {Selector: "input#r", HTML: `<input id="r">`},
 	}}}}
-	res := Check([]string{"label"}, rules.Input{Pages: []rules.Page{page("https://shop.at/", rep)}})
+	res := Check([]string{"label"}, rules.Input{Pages: []rules.Page{page("https://shop.at/", rep)}}, nil)
 	if len(res.Findings) != 2 {
 		t.Fatalf("findings = %d", len(res.Findings))
 	}

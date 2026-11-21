@@ -29,7 +29,7 @@ func (Rule) Meta() rules.Meta {
 // Check combines axe-core with a DOM check: axe accepts a placeholder as a name, but the spec (A3-2)
 // does not, because it disappears while typing and is often too faint.
 func (Rule) Check(_ context.Context, in rules.Input) (rules.Result, error) {
-	res := axecheck.Check(axeIDs, in)
+	res := axecheck.Check(axeIDs, in, nil)
 	for _, p := range in.Pages {
 		res.Findings = append(res.Findings, placeholderOnly(p)...)
 	}
