@@ -21,7 +21,8 @@ type Options struct {
 	MaxPages    int
 	MaxDepth    int
 	PageTimeout time.Duration
-	MinInterval time.Duration // minimum time between page loads (politeness, 2 req/s)
+	MinInterval time.Duration   // minimum time between page loads (politeness, 2 req/s)
+	Keyboard    KeyboardOptions // A5 probe mode and Tab limit
 }
 
 // DefaultOptions returns the MVP limits.
@@ -57,8 +58,12 @@ func priority(u string) int {
 // If ctx ends, the pages collected so far are returned with Incomplete set.
 func (c *Crawler) Crawl(ctx context.Context, startURL string, opt Options, robotsClient Getter, progress func(done, total int)) (Result, error) {
 	if opt.MaxPages <= 0 {
+		kb := opt.Keyboard
 		opt = DefaultOptions()
+		opt.Keyboard = kb
 	}
+	// A5: one sampler per crawl decides which pages get the keyboard probe (A5-5, A5-6)
+	sampler := newKeyboardSampler(opt.Keyboard)
 	su, err := url.Parse(startURL)
 	if err != nil {
 		return Result{}, err
@@ -70,6 +75,11 @@ func (c *Crawler) Crawl(ctx context.Context, startURL string, opt Options, robot
 		h, s := strings.ToLower(host), strings.ToLower(su.Hostname())
 		return h == s || h == "www."+s || "www."+h == s
 	}
+	plan := &probePlan{decide: sampler.decide, presses: opt.Keyboard.Presses(),
+		accept: func(finalURL string, status int) bool { // same check as below: dropped pages are not probed
+			fu, err := url.Parse(finalURL)
+			return err == nil && same(fu.Hostname()) && status < 400
+		}}
 
 	var robots *Robots
 	if robotsClient != nil {
@@ -117,7 +127,7 @@ func (c *Crawler) Crawl(ctx context.Context, startURL string, opt Options, robot
 		}
 		last = time.Now()
 
-		r, err := sess.Render(ctx, it.url, opt.PageTimeout)
+		r, err := sess.run(ctx, opt.PageTimeout, it.url, "", plan)
 		if err != nil {
 			if ctx.Err() != nil {
 				res.Incomplete = true

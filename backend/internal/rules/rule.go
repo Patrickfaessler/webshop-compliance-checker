@@ -63,6 +63,23 @@ type Page struct {
 	URL  string
 	HTML string     // rendered DOM serialised
 	Axe  *AxeReport // nil if axe-core did not run on this page (no browser)
+	// Keyboard is the A5 probe result; nil = not probed (not in the sample, no browser, probe failed).
+	Keyboard *KeyboardReport
+}
+
+// KeyboardNode is one element found by the keyboard probe. Spec: specs/rules/A5-keyboard.md.
+type KeyboardNode struct {
+	Selector string
+	Snippet  string
+}
+
+// KeyboardReport is the result of the A5 keyboard probe on one page.
+type KeyboardReport struct {
+	PageType                                       string // start, category, product, cart, checkout; "" = other (mode "alle Seiten")
+	MaxPresses                                     int
+	Presses                                        int
+	Completed                                      bool // focus left the document after the last element before the limit
+	Unreachable, NoFocusStyle, Traps, NotFocusable []KeyboardNode
 }
 
 // AxeReport is the subset of an axe-core run that rules need. Spec: specs/rules/A1..A3.
@@ -105,6 +122,7 @@ type Result struct {
 	State     State
 	DecidedBy DecidedBy
 	Findings  []Finding
+	NoteDe    string // German note on the result, e.g. A5 limit reached (A5-7); empty = none
 }
 
 // Rule is implemented by every check module (N5).

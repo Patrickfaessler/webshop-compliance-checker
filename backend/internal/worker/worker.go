@@ -8,6 +8,7 @@ import (
 	"slices"
 	"time"
 
+	"compliancechecker/internal/crawler"
 	"compliancechecker/internal/rules"
 	"compliancechecker/internal/scan"
 	"compliancechecker/internal/scoring"
@@ -18,7 +19,8 @@ import (
 type PageSource interface {
 	// Pages returns the pages found. incomplete is true if the time limit stopped the crawl.
 	// progress may be nil.
-	Pages(ctx context.Context, startURL string, progress func(done, total int)) (pages []rules.Page, incomplete bool, err error)
+	// kb selects the A5 keyboard probe mode and Tab limit.
+	Pages(ctx context.Context, startURL string, kb crawler.KeyboardOptions, progress func(done, total int)) (pages []rules.Page, incomplete bool, err error)
 }
 
 // Job identifies a scan to run and the rate-limit key to release afterwards.
@@ -41,6 +43,8 @@ type Runner struct {
 	Release   func(clientKey string) // may be nil
 	Now       func() time.Time
 	Timeout   time.Duration // total scan time, C-1 (5 min)
+	// TimeoutAllPages is the total scan time in A5 mode "alle Seiten" (C-1: 10 min); 0 = Timeout.
+	TimeoutAllPages time.Duration
 }
 
 // Loop processes jobs until ctx is cancelled or jobs is closed.
@@ -67,22 +71,26 @@ func (r *Runner) Run(ctx context.Context, job Job) {
 	if now == nil {
 		now = time.Now
 	}
-	if r.Timeout > 0 {
-		var cancel context.CancelFunc
-		ctx, cancel = context.WithTimeout(ctx, r.Timeout)
-		defer cancel()
-	}
-
 	s, ok := r.Store.Get(job.ScanID)
 	if !ok {
 		return
+	}
+	timeout := r.Timeout
+	if s.KeyboardAllPages && r.TimeoutAllPages > 0 {
+		timeout = r.TimeoutAllPages // C-1
+	}
+	if timeout > 0 {
+		var cancel context.CancelFunc
+		ctx, cancel = context.WithTimeout(ctx, timeout)
+		defer cancel()
 	}
 	r.Store.Update(job.ScanID, func(s *scan.Scan) { s.Status = scan.Running })
 
 	progress := func(done, total int) {
 		r.Store.Update(job.ScanID, func(s *scan.Scan) { s.PagesDone, s.PagesTotal = done, total })
 	}
-	pages, incomplete, err := r.Source.Pages(ctx, s.StartURL, progress)
+	kb := crawler.KeyboardOptions{AllPages: s.KeyboardAllPages, MaxPresses: s.KeyboardMaxPresses}
+	pages, incomplete, err := r.Source.Pages(ctx, s.StartURL, kb, progress)
 	if err != nil || len(pages) == 0 {
 		r.fail(job.ScanID, now(), "Die Startseite konnte nicht geladen werden.")
 		return
@@ -119,7 +127,7 @@ func (r *Runner) Run(ctx context.Context, job Job) {
 			})
 		}
 		results = append(results, scan.RuleResult{
-			RuleID: m.ID, State: res.State, DecidedBy: res.DecidedBy, PagesAffected: len(affected),
+			RuleID: m.ID, State: res.State, DecidedBy: res.DecidedBy, PagesAffected: len(affected), NoteDe: res.NoteDe,
 		})
 		outcomes = append(outcomes, scoring.Outcome{Severity: m.Severity, State: res.State})
 	}
@@ -133,9 +141,16 @@ func (r *Runner) Run(ctx context.Context, job Job) {
 		shots, findings = r.Annotator.Annotate(ctx, findings, order)
 	}
 
+	var probed []string // A5: pages with a keyboard result
+	for _, p := range pages {
+		if p.Keyboard != nil {
+			probed = append(probed, p.URL)
+		}
+	}
+
 	score, scoreOK := scoring.Score(outcomes)
 	r.Store.Update(job.ScanID, func(s *scan.Scan) {
-		s.RuleResults, s.Findings, s.Shots = results, findings, shots
+		s.RuleResults, s.Findings, s.Shots, s.KeyboardPages = results, findings, shots, probed
 		s.PagesDone = len(pages)
 		if s.PagesTotal < len(pages) {
 			s.PagesTotal = len(pages)

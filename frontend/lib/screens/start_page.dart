@@ -23,6 +23,8 @@ class StartPage extends StatefulWidget {
 
 class _StartPageState extends State<StartPage> {
   final _controller = TextEditingController();
+  final _presses = TextEditingController(text: '200'); // A5-8
+  bool _keyboardAllPages = false; // A5-6
   bool _accessibility = true;
   bool _legal = true;
   bool _busy = false;
@@ -31,6 +33,7 @@ class _StartPageState extends State<StartPage> {
   @override
   void dispose() {
     _controller.dispose();
+    _presses.dispose();
     super.dispose();
   }
 
@@ -45,12 +48,20 @@ class _StartPageState extends State<StartPage> {
       setState(() => _error = 'Bitte mindestens einen Prüfbereich auswählen.');
       return;
     }
+    // the Tab limit only matters with the accessibility area (A5-8)
+    final presses = _accessibility ? int.tryParse(_presses.text.trim()) : 200;
+    if (presses == null || presses < 50 || presses > 1000) {
+      setState(() => _error = 'Bitte eine Zahl von 50 bis 1000 eingeben.');
+      return;
+    }
     setState(() {
       _busy = true;
       _error = null;
     });
     try {
-      final scan = await widget.api.createScan(url, areas);
+      final scan = await widget.api.createScan(url, areas,
+          keyboardAllPages: _accessibility && _keyboardAllPages,
+          keyboardMaxPresses: presses);
       if (!mounted) return;
       context.go('/r/${scan.id}');
     } on ApiException catch (e) {
@@ -101,6 +112,41 @@ class _StartPageState extends State<StartPage> {
                 controlAffinity: ListTileControlAffinity.leading,
                 contentPadding: EdgeInsets.zero,
               ),
+              // A5 options (specs/rules/A5-keyboard.md), only with the accessibility area
+              Padding(
+                padding: const EdgeInsets.only(left: 32),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    CheckboxListTile(
+                      value: _accessibility && _keyboardAllPages,
+                      onChanged: _busy || !_accessibility
+                          ? null
+                          : (v) =>
+                              setState(() => _keyboardAllPages = v ?? false),
+                      title: const Text(
+                          'Gründliche Tastaturprüfung auf allen Seiten (dauert bis zu 10 Minuten)'),
+                      controlAffinity: ListTileControlAffinity.leading,
+                      contentPadding: EdgeInsets.zero,
+                    ),
+                    SizedBox(
+                      width: 260,
+                      child: TextField(
+                        controller: _presses,
+                        enabled: !_busy && _accessibility,
+                        keyboardType: TextInputType.number,
+                        decoration: const InputDecoration(
+                          labelText: 'Tab-Drücke pro Seite',
+                          helperText:
+                              '50–1000; mehr = gründlicher, aber langsamer',
+                          border: OutlineInputBorder(),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 8),
               CheckboxListTile(
                 value: _legal,
                 onChanged:

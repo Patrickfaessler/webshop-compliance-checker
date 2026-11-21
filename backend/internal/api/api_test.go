@@ -11,6 +11,7 @@ import (
 	"testing"
 	"time"
 
+	"compliancechecker/internal/crawler"
 	"compliancechecker/internal/ratelimit"
 	"compliancechecker/internal/rules"
 	"compliancechecker/internal/rules/a6"
@@ -20,7 +21,7 @@ import (
 
 type fakeSource struct{ html string }
 
-func (f fakeSource) Pages(_ context.Context, u string, _ func(done, total int)) ([]rules.Page, bool, error) {
+func (f fakeSource) Pages(_ context.Context, u string, _ crawler.KeyboardOptions, _ func(done, total int)) ([]rules.Page, bool, error) {
 	return []rules.Page{{URL: u, HTML: f.html}}, false, nil
 }
 
@@ -335,5 +336,67 @@ func TestClientKeyBehindProxy(t *testing.T) {
 	}
 	if key("172.31.250.2:5000", "") != key("172.31.250.2:6000", "") {
 		t.Fatal("without the header the proxy address is the key")
+	}
+}
+
+// Spec: A5-7, 08-api RuleResult.noteDe — the rule note is in the findings JSON, and absent when empty.
+func TestFindingsCarryRuleNote(t *testing.T) {
+	e := newEnv(3, 3)
+	id := runScan(t, e)
+	if body := e.do("GET", "/api/scans/"+id+"/findings", "").Body.String(); strings.Contains(body, "noteDe") {
+		t.Fatalf("empty note must be omitted: %s", body)
+	}
+	e.st.Update(id, func(s *scan.Scan) { s.RuleResults[0].NoteDe = "Hinweis X" })
+	if body := e.do("GET", "/api/scans/"+id+"/findings", "").Body.String(); !strings.Contains(body, `"noteDe":"Hinweis X"`) {
+		t.Fatalf("note missing: %s", body)
+	}
+}
+
+// Spec: A5-8, 08-api ScanRequest — keyboard options are stored, echoed and validated (50–1000).
+func TestCreateScanKeyboardOptions(t *testing.T) {
+	e := newEnv(10, 10)
+	var st scanStatus
+	decode(t, e.do("POST", "/api/scans", `{"url":"https://shop.example/a/"}`), &st)
+	sc, _ := e.st.Get(st.ID)
+	if sc.KeyboardAllPages || sc.KeyboardMaxPresses != 200 || st.KeyboardMaxPresses != 200 || st.KeyboardAllPages {
+		t.Errorf("defaults: stored %v/%d, echoed %v/%d", sc.KeyboardAllPages, sc.KeyboardMaxPresses, st.KeyboardAllPages, st.KeyboardMaxPresses)
+	}
+	decode(t, e.do("POST", "/api/scans", `{"url":"https://shop.example/b/","keyboardAllPages":true,"keyboardMaxPresses":500}`), &st)
+	sc, _ = e.st.Get(st.ID)
+	if !sc.KeyboardAllPages || sc.KeyboardMaxPresses != 500 || !st.KeyboardAllPages || st.KeyboardMaxPresses != 500 {
+		t.Errorf("custom: stored %v/%d, echoed %v/%d", sc.KeyboardAllPages, sc.KeyboardMaxPresses, st.KeyboardAllPages, st.KeyboardMaxPresses)
+	}
+	for _, n := range []string{"49", "1001"} {
+		rec := e.do("POST", "/api/scans", `{"url":"https://shop.example/c/","keyboardMaxPresses":`+n+`}`)
+		if rec.Code != http.StatusBadRequest || !strings.Contains(rec.Body.String(), "Tab-Drücke pro Seite: erlaubt sind 50 bis 1000.") {
+			t.Errorf("%s: %d %s", n, rec.Code, rec.Body.String())
+		}
+	}
+}
+
+// Spec: C-RL, Review Focus 1 — the cooldown only returns a scan with the same keyboard options.
+func TestCooldownRespectsKeyboardOptions(t *testing.T) {
+	e := newEnv(10, 10)
+	var a, b, c scanStatus
+	decode(t, e.do("POST", "/api/scans", `{"url":"https://shop.example/"}`), &a)
+	decode(t, e.do("POST", "/api/scans", `{"url":"https://shop.example/","keyboardAllPages":true}`), &b)
+	decode(t, e.do("POST", "/api/scans", `{"url":"https://shop.example/","keyboardAllPages":true}`), &c)
+	if a.ID == b.ID {
+		t.Error("all-pages request got the sample scan from the cooldown")
+	}
+	if b.ID != c.ID {
+		t.Error("same options again must come from the cooldown")
+	}
+}
+
+// Spec: 08-api ScanStatus — the status reports how many pages got a keyboard result.
+func TestStatusKeyboardPagesProbed(t *testing.T) {
+	e := newEnv(3, 3)
+	id := runScan(t, e)
+	e.st.Update(id, func(s *scan.Scan) { s.KeyboardPages = []string{"https://shop.example/", "https://shop.example/x"} })
+	var st scanStatus
+	decode(t, e.do("GET", "/api/scans/"+id, ""), &st)
+	if st.KeyboardPagesProbed != 2 {
+		t.Errorf("keyboardPagesProbed = %d", st.KeyboardPagesProbed)
 	}
 }

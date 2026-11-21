@@ -16,8 +16,10 @@ type CrawlSource struct {
 	Robots  crawler.Getter // fetches robots.txt; nil = ignore robots.txt
 }
 
-func (c CrawlSource) Pages(ctx context.Context, startURL string, progress func(done, total int)) ([]rules.Page, bool, error) {
-	res, err := c.Crawler.Crawl(ctx, startURL, c.Options, c.Robots, progress)
+func (c CrawlSource) Pages(ctx context.Context, startURL string, kb crawler.KeyboardOptions, progress func(done, total int)) ([]rules.Page, bool, error) {
+	opt := c.Options
+	opt.Keyboard = kb // A5 mode and Tab limit of this scan
+	res, err := c.Crawler.Crawl(ctx, startURL, opt, c.Robots, progress)
 	if err != nil && len(res.Pages) == 0 {
 		return nil, res.Incomplete, err
 	}
@@ -30,7 +32,8 @@ type FetchSource struct {
 	Client *fetch.Client
 }
 
-func (f FetchSource) Pages(ctx context.Context, startURL string, progress func(done, total int)) ([]rules.Page, bool, error) {
+// No browser, so no keyboard probe either: A5 reports not_assessable.
+func (f FetchSource) Pages(ctx context.Context, startURL string, _ crawler.KeyboardOptions, progress func(done, total int)) ([]rules.Page, bool, error) {
 	p, err := f.Client.Get(ctx, startURL)
 	if err != nil {
 		return nil, false, err

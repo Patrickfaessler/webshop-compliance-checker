@@ -16,13 +16,18 @@ class FakeApi implements ApiClient {
 
   String? createdUrl;
   List<String>? createdAreas;
+  bool? createdKeyboardAllPages;
+  int? createdKeyboardMaxPresses;
   int getCalls = 0;
 
   @override
-  Future<ScanStatus> createScan(String url, List<String> areas) async {
+  Future<ScanStatus> createScan(String url, List<String> areas,
+      {bool keyboardAllPages = false, int keyboardMaxPresses = 200}) async {
     if (createError != null) throw createError!;
     createdUrl = url;
     createdAreas = areas;
+    createdKeyboardAllPages = keyboardAllPages;
+    createdKeyboardMaxPresses = keyboardMaxPresses;
     return statusOf('new123', 'queued');
   }
 
@@ -52,6 +57,9 @@ ScanStatus statusOf(
   int total = 0,
   String? errorDe,
   DateTime? expiresAt,
+  bool keyboardAllPages = false,
+  int keyboardMaxPresses = 200,
+  int keyboardPagesProbed = 0,
 }) =>
     ScanStatus(
       id: id,
@@ -62,4 +70,7 @@ ScanStatus statusOf(
       errorDe: errorDe,
       disclaimerDe: 'DISCLAIMER-VOM-SERVER',
       expiresAt: expiresAt,
+      keyboardAllPages: keyboardAllPages,
+      keyboardMaxPresses: keyboardMaxPresses,
+      keyboardPagesProbed: keyboardPagesProbed,
     );

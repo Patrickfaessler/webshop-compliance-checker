@@ -106,6 +106,12 @@ func (r Report) PDF(opt PDFOptions) ([]byte, error) {
 	}
 	line("Status:", status)
 	line("Geprüfte Seiten:", fmt.Sprint(r.Scan.PagesScanned))
+	if kb := r.KeyboardLineDe(); kb != "" { // RP-6
+		line("Tastatur:", kb)
+		for _, u := range r.Scan.KeyboardPages {
+			line("", u)
+		}
+	}
 	var areas []string
 	for _, a := range r.Scan.Areas {
 		areas = append(areas, areaDe(a))
@@ -162,6 +168,9 @@ func (r Report) PDF(opt PDFOptions) ([]byte, error) {
 			pdf.CellFormat(c.w, 7, tr(vals[i]), "1", 0, "L", false, 0, "")
 		}
 		pdf.Ln(-1)
+		if rr.NoteDe != "" { // A5-7
+			pdf.MultiCell(width, 5, tr("Hinweis zu "+rr.RuleID+": "+rr.NoteDe), "1", "L", false)
+		}
 	}
 
 	// findings

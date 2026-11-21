@@ -104,6 +104,7 @@ footer { margin-top: 40px; }
     <dt>Status</dt><dd>{{.StatusDe}}</dd>
     <dt>Geprüfte Seiten</dt><dd>{{.PagesScanned}}</dd>
     <dt>Prüfbereiche</dt><dd>{{.AreasDe}}</dd>
+    {{if .KeyboardDe}}<dt>Tastatur</dt><dd>{{.KeyboardDe}}{{if .KeyboardPages}}<ul class="kb-pages">{{range .KeyboardPages}}<li>{{.}}</li>{{end}}</ul>{{end}}</dd>{{end}}
     <dt>Bericht erstellt</dt><dd>{{.GeneratedDe}}</dd>
   </dl>
   <p class="note"><strong>Wichtiger Hinweis:</strong> {{.Disclaimer}}</p>
@@ -125,7 +126,7 @@ footer { margin-top: 40px; }
   <table>
     <thead><tr><th scope="col">Regel</th><th scope="col">Bezeichnung</th><th scope="col">Schweregrad</th><th scope="col">Ergebnis</th><th scope="col">Seiten</th></tr></thead>
     <tbody>
-    {{range .Rules}}<tr><td>{{.ID}}</td><td>{{.NameDe}}</td><td><span class="badge {{.SevClass}}">{{.SeverityDe}}</span></td><td class="{{.StateClass}}">{{.StateDe}}</td><td>{{.Pages}}</td></tr>
+    {{range .Rules}}<tr><td>{{.ID}}</td><td>{{.NameDe}}{{if .NoteDe}}<p class="note">{{.NoteDe}}</p>{{end}}</td><td><span class="badge {{.SevClass}}">{{.SeverityDe}}</span></td><td class="{{.StateClass}}">{{.StateDe}}</td><td>{{.Pages}}</td></tr>
     {{end}}
     </tbody>
   </table>

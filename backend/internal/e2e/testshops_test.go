@@ -21,6 +21,7 @@ import (
 	"compliancechecker/internal/rules/a2"
 	"compliancechecker/internal/rules/a3"
 	"compliancechecker/internal/rules/a4"
+	"compliancechecker/internal/rules/a5"
 	"compliancechecker/internal/rules/a6"
 	"compliancechecker/internal/scoring"
 )
@@ -62,7 +63,7 @@ func TestShops(t *testing.T) {
 	srv := httptest.NewServer(http.FileServer(http.Dir(siteDir)))
 	defer srv.Close()
 
-	ruleList := []rules.Rule{a1.New(), a2.New(), a3.New(), a4.New(), a6.New()}
+	ruleList := []rules.Rule{a1.New(), a2.New(), a3.New(), a4.New(), a5.New(), a6.New()}
 	dirs, _ := filepath.Glob(filepath.Join(siteDir, "*", "expected.json"))
 	if len(dirs) == 0 {
 		t.Fatal("no shops found")
@@ -120,5 +121,52 @@ func TestShops(t *testing.T) {
 				t.Errorf("score = %d, want %d", score, exp.ExpectedScore)
 			}
 		})
+	}
+}
+
+// Spec: A5-5, A5-6, T-3 — sample mode probes the start page and one page per type (max 5);
+// mode "alle Seiten" probes every crawled page.
+func TestShopKeyboardModes(t *testing.T) {
+	if _, err := crawler.FindBrowser(""); err != nil {
+		t.Skip("no browser installed")
+	}
+	if _, err := os.Stat(siteDir); err != nil {
+		t.Skip("testshops/site not generated")
+	}
+	srv := httptest.NewServer(http.FileServer(http.Dir(siteDir)))
+	defer srv.Close()
+	for _, all := range []bool{false, true} {
+		ctx, cancel := context.WithTimeout(context.Background(), 4*time.Minute)
+		c := &crawler.Crawler{Validate: allowLoopback}
+		opt := crawler.DefaultOptions()
+		opt.MinInterval = 50 * time.Millisecond
+		opt.Keyboard = crawler.KeyboardOptions{AllPages: all}
+		res, err := c.Crawl(ctx, srv.URL+"/radwerk/", opt, nil, nil)
+		cancel()
+		if err != nil {
+			t.Fatal(err)
+		}
+		types := map[string]int{}
+		probed := 0
+		for _, p := range res.Pages {
+			if p.Keyboard != nil {
+				probed++
+				types[p.Keyboard.PageType]++
+			}
+		}
+		if all {
+			if probed != len(res.Pages) {
+				t.Errorf("all pages: probed %d of %d", probed, len(res.Pages))
+			}
+			continue
+		}
+		if probed > crawler.MaxKeyboardSample {
+			t.Errorf("sample: probed %d pages", probed)
+		}
+		for _, typ := range []string{"start", "category", "product", "cart", "checkout"} {
+			if types[typ] != 1 {
+				t.Errorf("sample: %d pages of type %q, want 1 (%v)", types[typ], typ, types)
+			}
+		}
 	}
 }

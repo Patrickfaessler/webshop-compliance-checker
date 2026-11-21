@@ -25,6 +25,8 @@ const maxCrops = 60
 type htmlView struct {
 	Host, StartURL, CreatedDe, GeneratedDe, StatusDe, AreasDe string
 	PagesScanned                                              int
+	KeyboardDe                                                string   // A5 mode line (RP-6)
+	KeyboardPages                                             []string // probed pages
 	ScoreText                                                 string
 	Counts                                                    []countView
 	Disclaimer                                                string
@@ -42,6 +44,7 @@ type countView struct {
 type ruleView struct {
 	ID, NameDe, SeverityDe, SevClass, StateDe, StateClass string
 	Pages                                                 string
+	NoteDe                                                string // A5-7
 }
 
 type sectionView struct {
@@ -79,6 +82,7 @@ func (r Report) HTML() ([]byte, error) {
 		Host: r.Scan.Host, StartURL: r.Scan.StartURL,
 		CreatedDe: dateTimeDe(r.Scan.CreatedAt), GeneratedDe: dateTimeDe(r.GeneratedAt),
 		PagesScanned: r.Scan.PagesScanned, Disclaimer: r.DisclaimerDe, FindingCount: len(r.Findings),
+		KeyboardDe: r.KeyboardLineDe(), KeyboardPages: r.Scan.KeyboardPages,
 	}
 	v.StatusDe = "abgeschlossen"
 	if r.Scan.Status == "incomplete" {
@@ -106,6 +110,7 @@ func (r Report) HTML() ([]byte, error) {
 		v.Rules = append(v.Rules, ruleView{
 			ID: rr.RuleID, NameDe: rr.NameDe, SeverityDe: severityDe(rr.Severity), SevClass: sevClass(rr.Severity),
 			StateDe: stateDe(rr.State), StateClass: "st-" + strings.ReplaceAll(rr.State, "_", "-"), Pages: pages,
+			NoteDe: rr.NoteDe,
 		})
 	}
 	for _, s := range []string{"passed", "failed", "not_applicable", "not_assessable"} {

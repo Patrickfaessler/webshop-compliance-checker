@@ -7,9 +7,10 @@
     "A2": "failed",
     "A3": "passed",
     "A4": "failed",
+    "A5": "passed",
     "A6": "passed"
   },
-  "expectedScore": 40,
+  "expectedScore": 54,
   "pages": [
     "index.html",
     "kategorie-1.html",
@@ -51,5 +52,5 @@
       "what": "keine Funktion „Vertrag widerrufen“"
     }
   ],
-  "note": "expected/expectedScore cover the implemented rules (A1-A4, A6). R-rule defects are planted and listed for later; the scanner does not check them yet."
+  "note": "expected/expectedScore cover the implemented rules (A1-A6). R-rule defects are planted and listed for later; the scanner does not check them yet."
 }

@@ -24,6 +24,8 @@ type Defects struct {
 	DoubleH1OnProducts    bool            // A4: product pages have two h1
 	EmptyHeadingOnCart    bool            // A4: empty h2 on the cart page
 	SkipH2ToH4OnCategory  bool            // A4: category pages jump from h2 to h4
+	NoFocusStyleButtons   bool            // A5: buttons get outline:none on focus, no other focus style
+	ClickableDivOnCart    bool            // A5: "Gutschein einlösen" on the cart page is a div with onclick
 
 	// Legal defects, planted now for the R-rules that are not implemented yet (documented in expected.json).
 	ImpressumNoEmail   bool   // R1
@@ -68,7 +70,7 @@ func shops() []Shop {
 				{"rooibos", "Rooibos Vanille", "Koffeinfrei, mit echter Vanille.", "7,20 €", "#9c5a2e"},
 			},
 			Defects:       Defects{OrderButton: "Zahlungspflichtig bestellen", WithdrawalFunction: true},
-			Expected:      map[string]string{"A1": "passed", "A2": "passed", "A3": "passed", "A4": "passed", "A6": "passed"},
+			Expected:      map[string]string{"A1": "passed", "A2": "passed", "A3": "passed", "A4": "passed", "A5": "passed", "A6": "passed"},
 			ExpectedScore: 100,
 		},
 		{
@@ -93,6 +95,8 @@ func shops() []Shop {
 				SkipLevelOn:           map[string]bool{"index": true},
 				DoubleH1OnProducts:    true,
 				EmptyHeadingOnCart:    true,
+				NoFocusStyleButtons:   true,
+				ClickableDivOnCart:    true,
 				ImpressumNoEmail:      true,
 				ImpressumNoVAT:        true,
 				PrivacyShort:          true,
@@ -100,7 +104,7 @@ func shops() []Shop {
 				OrderButton:           "Bestellen",
 				NoWithdrawalPage:      true,
 			},
-			Expected:      map[string]string{"A1": "failed", "A2": "failed", "A3": "failed", "A4": "failed", "A6": "failed"},
+			Expected:      map[string]string{"A1": "failed", "A2": "failed", "A3": "failed", "A4": "failed", "A5": "failed", "A6": "failed"},
 			ExpectedScore: 0,
 		},
 		{
@@ -121,8 +125,8 @@ func shops() []Shop {
 				SkipH2ToH4OnCategory: true,
 				OrderButton:          "Jetzt kaufen",
 			},
-			Expected:      map[string]string{"A1": "failed", "A2": "failed", "A3": "passed", "A4": "failed", "A6": "passed"},
-			ExpectedScore: 40,
+			Expected:      map[string]string{"A1": "failed", "A2": "failed", "A3": "passed", "A4": "failed", "A5": "passed", "A6": "passed"},
+			ExpectedScore: 54, // A5 passed (critical, weight 3): (3+1+3)/(9+1+3)
 		},
 	}
 }

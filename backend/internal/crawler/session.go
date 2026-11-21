@@ -5,10 +5,10 @@ package crawler
 import (
 	"context"
 	_ "embed"
-	"encoding/base64"
 	"encoding/json"
 	"errors"
 	"fmt"
+	"log"
 	"net/url"
 	"os"
 	"os/exec"
@@ -132,17 +132,15 @@ type Rendered struct {
 // Render loads rawURL, waits for it to settle, runs axe-core and returns the result.
 // Every request the page makes is validated first (C-SSRF).
 func (s *Session) Render(ctx context.Context, rawURL string, timeout time.Duration) (Rendered, error) {
-	return s.run(ctx, timeout, rawURL, "")
+	return s.run(ctx, timeout, rawURL, "", nil)
 }
 
 // AnalyzeHTML renders an HTML string (no network needed) and runs axe-core on it. Used by the corpus.
 func (s *Session) AnalyzeHTML(ctx context.Context, pageURL, htmlSrc string, timeout time.Duration) (rules.Page, error) {
-	dataURL := "data:text/html;charset=utf-8;base64," + base64.StdEncoding.EncodeToString([]byte(htmlSrc))
-	r, err := s.run(ctx, timeout, dataURL, pageURL)
-	return r.Page, err
+	return s.analyze(ctx, pageURL, htmlSrc, timeout, KeyboardOptions{}) // A5: the corpus always probes
 }
 
-func (s *Session) run(ctx context.Context, timeout time.Duration, target, displayURL string) (Rendered, error) {
+func (s *Session) run(ctx context.Context, timeout time.Duration, target, displayURL string, plan *probePlan) (Rendered, error) {
 	// One tab per page. The listener is registered first: that also opens the tab. A timeout must not
 	// be set before the tab exists, so the time limit is applied to a child context afterwards.
 	tctx, tcancel := chromedp.NewContext(s.bctx)
@@ -220,8 +218,26 @@ func (s *Session) run(ctx context.Context, timeout time.Duration, target, displa
 	mu.Lock()
 	st := status
 	mu.Unlock()
+
+	// A5: the keyboard probe runs last, so it cannot change what the other rules see, and with its own
+	// time budget, so a slow probe never costs the page (A5-9).
+	var kb *rules.KeyboardReport
+	if plan != nil && plan.decide != nil && (plan.accept == nil || plan.accept(finalURL, st)) {
+		if typ, ok := plan.decide(pageURL, readSignals(rctx)); ok {
+			pctx, pcancel := context.WithTimeout(tctx, probeTimeout)
+			pstop := context.AfterFunc(ctx, pcancel)
+			if k, err := s.probeKeyboard(pctx, plan.presses); err != nil {
+				log.Printf("crawler: keyboard probe on %s: %v", shortURL(pageURL), err)
+			} else {
+				k.PageType = string(typ)
+				kb = k
+			}
+			pstop()
+			pcancel()
+		}
+	}
 	return Rendered{
-		Page:     rules.Page{URL: pageURL, HTML: docHTML, Axe: report},
+		Page:     rules.Page{URL: pageURL, HTML: docHTML, Axe: report, Keyboard: kb},
 		Links:    links,
 		Status:   st,
 		FinalURL: finalURL,

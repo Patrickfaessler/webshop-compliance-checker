@@ -34,6 +34,7 @@ type RuleResult struct {
 	State         rules.State
 	DecidedBy     rules.DecidedBy
 	PagesAffected int
+	NoteDe        string // A5-7
 }
 
 type Finding struct {
@@ -82,9 +83,13 @@ type Scan struct {
 	RuleResults    []RuleResult
 	Findings       []Finding
 	Shots          []Shot // screenshots for the visual report (RP-1); memory only
-	CreatedAt      time.Time
-	FinishedAt     time.Time
-	ExpiresAt      time.Time
+	// A5 keyboard probe (specs/rules/A5-keyboard.md): mode, Tab limit and the pages that got a keyboard result.
+	KeyboardAllPages   bool
+	KeyboardMaxPresses int
+	KeyboardPages      []string
+	CreatedAt          time.Time
+	FinishedAt         time.Time
+	ExpiresAt          time.Time
 }
 
 // NewID returns a random 128-bit URL-safe id (F11).

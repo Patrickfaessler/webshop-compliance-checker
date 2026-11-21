@@ -59,8 +59,9 @@ func Run(t *testing.T, newStore Factory) {
 			s.Status, s.Score, s.FinishedAt = scan.Done, &score, finished
 			s.RuleResults = []scan.RuleResult{
 				{RuleID: "A6", State: rules.Failed, DecidedBy: rules.DecidedStructural, PagesAffected: 2},
-				{RuleID: "A1", State: rules.Passed, DecidedBy: rules.DecidedStructural},
+				{RuleID: "A1", State: rules.Passed, DecidedBy: rules.DecidedStructural, NoteDe: "Hinweis"},
 			}
+			s.KeyboardAllPages, s.KeyboardMaxPresses, s.KeyboardPages = true, 500, []string{"https://shop.example/"}
 			s.Findings = []scan.Finding{
 				{ID: "s1-A6-1", RuleID: "A6", Severity: rules.Notice, URL: "https://shop.example/", Selector: "html", Snippet: "<html>", SummaryDe: "Sprache fehlt", Sub: "x"},
 				{ID: "s1-A6-2", RuleID: "A6", Severity: rules.Notice, URL: "https://shop.example/a", Selector: "html"},
@@ -72,6 +73,10 @@ func Run(t *testing.T, newStore Factory) {
 		got, _ := st.Get("s1")
 		if got.Status != scan.Done || got.Score == nil || *got.Score != 60 || got.PagesTotal != 4 || !got.FinishedAt.Equal(finished) {
 			t.Fatalf("scan: %+v", got)
+		}
+		// Spec: A5-7, A5-8 — keyboard options, probed pages and rule notes are stored
+		if !got.KeyboardAllPages || got.KeyboardMaxPresses != 500 || len(got.KeyboardPages) != 1 || got.RuleResults[1].NoteDe != "Hinweis" {
+			t.Fatalf("keyboard fields: %v %d %v %+v", got.KeyboardAllPages, got.KeyboardMaxPresses, got.KeyboardPages, got.RuleResults)
 		}
 		if len(got.RuleResults) != 2 || got.RuleResults[0].RuleID != "A6" || got.RuleResults[0].PagesAffected != 2 || got.RuleResults[1].State != rules.Passed {
 			t.Fatalf("rule results: %+v", got.RuleResults)

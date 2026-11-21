@@ -20,7 +20,8 @@ void main() {
   test('empty API_BASE means same origin', () {
     final page = Uri.parse('https://check.example.org/r/abc?x=1');
     expect(resolveApiBase('', page), 'https://check.example.org');
-    expect(resolveApiBase('http://localhost:8080', page), 'http://localhost:8080');
+    expect(
+        resolveApiBase('http://localhost:8080', page), 'http://localhost:8080');
   });
 
   test('createScan posts url and areas and parses the status', () async {
@@ -42,7 +43,9 @@ void main() {
     expect(seen.url.toString(), 'http://api.test/api/scans');
     expect(jsonDecode(seen.body), {
       'url': 'https://shop.at',
-      'areas': ['legal']
+      'areas': ['legal'],
+      'keyboardAllPages': false,
+      'keyboardMaxPresses': 200,
     });
     expect(s.id, 'abc');
     expect(s.score, isNull);
@@ -105,5 +108,38 @@ void main() {
     });
     await api.getScan('a/b');
     expect(seen.toString(), 'http://api.test/api/scans/a%2Fb');
+  });
+
+  // Spec: A5-8, A5-7 — keyboard options are sent; keyboard fields and rule notes are parsed.
+  test('createScan sends keyboard options and parses keyboard fields',
+      () async {
+    late http.Request seen;
+    final api = clientFor((r) {
+      seen = r;
+      return json({
+        'id': 'abc',
+        'status': 'done',
+        'keyboardAllPages': true,
+        'keyboardMaxPresses': 500,
+        'keyboardPagesProbed': 7,
+      }, 202);
+    });
+    final s = await api.createScan('https://shop.at', ['accessibility'],
+        keyboardAllPages: true, keyboardMaxPresses: 500);
+    final body = jsonDecode(seen.body) as Map<String, dynamic>;
+    expect(body['keyboardAllPages'], true);
+    expect(body['keyboardMaxPresses'], 500);
+    expect(s.keyboardAllPages, isTrue);
+    expect(s.keyboardMaxPresses, 500);
+    expect(s.keyboardPagesProbed, 7);
+    final old = ScanStatus.fromJson({'id': 'x', 'status': 'done'});
+    expect(old.keyboardAllPages, isFalse);
+    expect(old.keyboardMaxPresses, 200);
+    expect(old.keyboardPagesProbed, 0);
+    final r = RuleResult.fromJson(
+        {'ruleId': 'A5', 'state': 'passed', 'noteDe': 'Limit erreicht.'});
+    expect(r.noteDe, 'Limit erreicht.');
+    expect(RuleResult.fromJson({'ruleId': 'A6', 'state': 'passed'}).noteDe,
+        isNull);
   });
 }

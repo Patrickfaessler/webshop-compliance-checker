@@ -175,3 +175,84 @@ func TestPositionNoteOutside(t *testing.T) {
 		t.Errorf("outside note = %q", got)
 	}
 }
+
+// Spec: A5-7, RP-6 — a rule note appears under the rule name in HTML, text PDF and JSON; it is escaped.
+func TestReportShowsRuleNote(t *testing.T) {
+	sc := finished()
+	sc.RuleResults[0].NoteDe = "Limit <erreicht>"
+	r, err := Build(sc, nil, t0)
+	if err != nil {
+		t.Fatal(err)
+	}
+	doc, err := r.HTML()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(doc), `<p class="note">Limit &lt;erreicht&gt;</p>`) {
+		t.Error("note missing in HTML")
+	}
+	pdf, err := r.PDF(PDFOptions{Uncompressed: true})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !bytes.Contains(pdf, []byte("Limit <erreicht>")) {
+		t.Error("note missing in PDF")
+	}
+	js, _ := r.JSON()
+	if !bytes.Contains(js, []byte(`"noteDe": "Limit \u003cerreicht\u003e"`)) {
+		t.Errorf("note missing in JSON: %s", js)
+	}
+}
+
+// Spec: RP-6, A5 — the report says which A5 mode ran, with Tab limit and probed pages; JSON carries the fields.
+func TestReportKeyboardModeLine(t *testing.T) {
+	cases := []struct {
+		areas []string
+		all   bool
+		pages []string
+		max   int
+		want  string
+	}{
+		{[]string{"accessibility"}, false, []string{"https://shop.example/", "https://shop.example/p"}, 200, "Tastaturprüfung: Stichprobe (2 Seiten), bis zu 200 Tab-Drücke pro Seite"},
+		{[]string{"accessibility", "legal"}, true, []string{"1", "2", "3", "4", "5", "6", "7"}, 500, "Tastaturprüfung: alle Seiten (7 Seiten), bis zu 500 Tab-Drücke pro Seite"},
+		{[]string{"legal"}, false, nil, 200, ""},
+	}
+	for _, c := range cases {
+		sc := finished()
+		sc.Areas, sc.KeyboardAllPages, sc.KeyboardPages, sc.KeyboardMaxPresses = c.areas, c.all, c.pages, c.max
+		r, err := Build(sc, nil, t0)
+		if err != nil {
+			t.Fatal(err)
+		}
+		doc, _ := r.HTML()
+		pdf, _ := r.PDF(PDFOptions{Uncompressed: true})
+		if c.want == "" {
+			if strings.Contains(string(doc), "Tastaturprüfung") {
+				t.Errorf("legal only: HTML has a keyboard line")
+			}
+			continue
+		}
+		if !strings.Contains(string(doc), c.want) {
+			t.Errorf("HTML misses %q", c.want)
+		}
+		if !strings.Contains(string(doc), c.pages[len(c.pages)-1]) {
+			t.Errorf("HTML misses probed page %q", c.pages[len(c.pages)-1])
+		}
+		// fpdf writes cp1252 and escapes parentheses
+		pdfText := strings.NewReplacer(`\(`, "(", `\)`, ")").Replace(string(pdf))
+		if !strings.Contains(pdfText, strings.ReplaceAll(c.want, "ü", "\xfc")) {
+			t.Errorf("PDF misses %q", c.want)
+		}
+		js, _ := r.JSON()
+		var got struct {
+			Scan struct {
+				KeyboardAllPages   bool     `json:"keyboardAllPages"`
+				KeyboardMaxPresses int      `json:"keyboardMaxPresses"`
+				KeyboardPages      []string `json:"keyboardPages"`
+			} `json:"scan"`
+		}
+		if err := json.Unmarshal(js, &got); err != nil || got.Scan.KeyboardAllPages != c.all || got.Scan.KeyboardMaxPresses != c.max || len(got.Scan.KeyboardPages) != len(c.pages) {
+			t.Errorf("JSON scan = %+v (%v)", got.Scan, err)
+		}
+	}
+}
