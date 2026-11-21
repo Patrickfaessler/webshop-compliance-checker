@@ -38,3 +38,42 @@ func TestA2FixFilenameAlt(t *testing.T) {
 		t.Fatalf("findings = %+v", res.Findings)
 	}
 }
+
+// Spec: A2-F — images sharing one src (lazy-load placeholder) get no product name.
+func TestA2FixSharedSrc(t *testing.T) {
+	page := `<html><body><div class="grid"><div class="card"><img src="ph.gif"><h3>Lampe</h3></div><div class="card"><img src="ph.gif"><h3>Tasche</h3></div></div></body></html>`
+	res := run(t, page, &rules.AxeReport{Violations: []rules.AxeResult{{ID: "image-alt", Nodes: []rules.AxeNode{
+		{Selector: ".card:nth-child(1) > img", HTML: `<img src="ph.gif">`}, {Selector: ".card:nth-child(2) > img", HTML: `<img src="ph.gif">`}}}}})
+	for _, f := range res.Findings {
+		if f.Fix == nil || f.Fix.Code != `alt="Beschreibung des Bildes"` {
+			t.Errorf("%s: fix = %+v", f.Selector, f.Fix)
+		}
+	}
+}
+
+// Spec: A2-F — a section heading before the card is not the product name; a grid is not one card.
+func TestA2FixNotSectionHeading(t *testing.T) {
+	for _, page := range []string{
+		`<html><body><section><h2>Unsere Bestseller</h2><div class="row"><div class="card"><img src="a.jpg"><span class="name">Lampe</span></div></div></section></body></html>`,
+		`<html><body><div class="grid"><div class="card"><img src="b.jpg"><h3>Tasche</h3></div><div class="card"><img src="a.jpg"><span>Lampe</span></div></div></body></html>`,
+	} {
+		res := run(t, page, axeImg("a.jpg"))
+		if f := res.Findings[0].Fix; f == nil || f.Code != `alt="Beschreibung des Bildes"` {
+			t.Errorf("fix = %+v for %s", f, page)
+		}
+	}
+	// a title before the image inside the image's own card still counts
+	res := run(t, `<html><body><div class="card"><h3>Lampe</h3><img src="a.jpg"></div></body></html>`, axeImg("a.jpg"))
+	if f := res.Findings[0].Fix; f == nil || f.Code != `alt="Lampe"` {
+		t.Errorf("own card title: fix = %+v", f)
+	}
+}
+
+// Spec: A2-F — an SVG graphic needs aria-label, not alt.
+func TestA2FixSVG(t *testing.T) {
+	res := run(t, `<html><body><svg role="img"></svg></body></html>`, &rules.AxeReport{Violations: []rules.AxeResult{{ID: "svg-img-alt",
+		Nodes: []rules.AxeNode{{Selector: "svg", HTML: `<svg role="img">`}}}}})
+	if f := res.Findings[0].Fix; f == nil || f.TextDe != "Gib der Grafik einen kurzen Namen." || f.Code != `aria-label="Beschreibung der Grafik"` || f.NoteDe != "Beschreibung bitte anpassen." {
+		t.Errorf("fix = %+v", f)
+	}
+}

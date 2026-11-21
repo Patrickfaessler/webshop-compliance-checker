@@ -6,7 +6,6 @@ import (
 	"context"
 	"fmt"
 
-	"compliancechecker/internal/fixes"
 	"compliancechecker/internal/rules"
 )
 
@@ -64,7 +63,8 @@ func fixFor(sub, selector string) *rules.Fix {
 	switch sub {
 	case "no-focus-style":
 		return &rules.Fix{TextDe: "Mach sichtbar, welches Element den Fokus hat.",
-			Code: fixes.Fill("{{selector}}:focus-visible { outline: 2px solid currentColor; outline-offset: 2px; }", map[string]string{"selector": selector})}
+			// CSS, not HTML: the selector goes in unchanged (it is only ever shown as text)
+			Code: selector + ":focus-visible { outline: 2px solid currentColor; outline-offset: 2px; }"}
 	case "not-focusable":
 		return &rules.Fix{TextDe: `Verwende ein <button>-Element. Alternativ role="button" und tabindex="0" ergänzen und Enter/Leertaste per Skript bedienen.`,
 			Code: `<button type="button">…</button>`}

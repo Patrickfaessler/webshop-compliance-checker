@@ -21,7 +21,9 @@ Dieses Eingabefeld hat keine Beschriftung, die ein Screenreader vorlesen kann. N
 ## Fix templates
 Text: `Gib dem Feld eine sichtbare Beschriftung.` Code: `<label for="{{id}}">{{labelText}}</label>`, placed before the field.
 - `labelText` from `placeholder`, else from `name` (capitalised, `_`/`-` as spaces), else `Beschriftung` with note `Beschriftungstext bitte anpassen.`
-- `id` from the field; if it has none, from `name`, else `feld-{{n}}` (n counts such fields per page from 1); then a second code line `id="{{id}}" am Feld ergänzen`.
+- `id` from the field; if it has none, from `name` (only if no element on the page has that id yet, and never for `radio`/`checkbox`, whose name is shared by the group), else `feld-{{n}}` (n counts such fields per page from 1); then a second code line `id="{{id}}" am Feld ergänzen`.
+- `radio`/`checkbox`: `labelText` from `value` if present; note `Optionsgruppen zusätzlich mit <fieldset> und <legend> beschriften.`
+- Field snippet not readable (e.g. cut off by axe): no code; note `Beschriftung mit <label for="…"> und der id des Feldes ergänzen.`
 
 ## Acceptance
 - A3-1: input without label fails; with `<label for>` passes.

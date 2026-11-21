@@ -469,3 +469,24 @@ func TestFindingCrop(t *testing.T) {
 		}
 	}
 }
+
+// Spec: F8, RP-12 — crops of a finished scan are computed once and then served from the cache.
+func TestFindingCropCached(t *testing.T) {
+	e := newEnv(3, 3)
+	id := runScan(t, e)
+	var buf bytes.Buffer
+	if err := jpeg.Encode(&buf, image.NewRGBA(image.Rect(0, 0, 200, 200)), nil); err != nil {
+		t.Fatal(err)
+	}
+	e.st.Update(id, func(s *scan.Scan) {
+		s.Shots = []scan.Shot{{URL: "https://shop.example/", Image: buf.Bytes(), Width: 200, Height: 200, ViewportWidth: 200}}
+		s.Findings = []scan.Finding{{ID: "f1", RuleID: "A3", URL: "https://shop.example/", Position: "element", Box: &scan.Box{X: 10, Y: 10, Width: 50, Height: 20}}}
+	})
+	if c := e.do("GET", "/api/scans/"+id+"/findings/f1/crop.jpg", "").Code; c != 200 {
+		t.Fatalf("first: %d", c)
+	}
+	e.st.Update(id, func(s *scan.Scan) { s.Shots[0].Image = []byte("broken") }) // a second decode would fail
+	if c := e.do("GET", "/api/scans/"+id+"/findings/f1/crop.jpg", "").Code; c != 200 {
+		t.Errorf("second request decoded again: %d", c)
+	}
+}

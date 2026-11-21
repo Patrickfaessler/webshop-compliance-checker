@@ -301,7 +301,7 @@ func (s *Server) findingCrop(w http.ResponseWriter, r *http.Request) {
 		problem(w, http.StatusNotFound, notFoundDe, 0)
 		return
 	}
-	img, ok := report.FindingCrop(sc, r.PathValue("findingId"))
+	img, ok := s.cachedCrop(r.Context(), sc, r.PathValue("findingId"))
 	if !ok {
 		problem(w, http.StatusNotFound, "Für diese Fundstelle gibt es keinen Ausschnitt.", 0)
 		return

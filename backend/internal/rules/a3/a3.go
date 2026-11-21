@@ -30,13 +30,21 @@ func (Rule) Meta() rules.Meta {
 // Check combines axe-core with a DOM check: axe accepts a placeholder as a name, but the spec (A3-2)
 // does not, because it disappears while typing and is often too faint.
 func (Rule) Check(_ context.Context, in rules.Input) (rules.Result, error) {
-	counters := map[string]int{} // fields without id and name, per page
+	counters := map[string]int{} // fields that get a new id, per page
 	next := func(url string) func() int { return func() int { counters[url]++; return counters[url] } }
+	ids := map[string]map[string]bool{} // ids on each page, parsed once
+	taken := func(p rules.Page) func(string) bool {
+		if ids[p.URL] == nil {
+			ids[p.URL] = pageIDs(p.HTML)
+		}
+		m := ids[p.URL]
+		return func(id string) bool { return m[id] }
+	}
 	res := axecheck.Check(axeIDs, in, func(p rules.Page, n rules.AxeNode) *rules.Fix {
-		return labelFix(fixes.Tag(n.HTML), next(p.URL))
+		return labelFix(fixes.Tag(n.HTML), next(p.URL), taken(p))
 	})
 	for _, p := range in.Pages {
-		res.Findings = append(res.Findings, placeholderOnly(p, next(p.URL))...)
+		res.Findings = append(res.Findings, placeholderOnly(p, next(p.URL), taken(p))...)
 	}
 	if len(res.Findings) > 0 {
 		res.State = rules.Failed
@@ -44,7 +52,7 @@ func (Rule) Check(_ context.Context, in rules.Input) (rules.Result, error) {
 	return res, nil
 }
 
-func placeholderOnly(p rules.Page, next func() int) []rules.Finding {
+func placeholderOnly(p rules.Page, next func() int, taken func(string) bool) []rules.Finding {
 	doc := domutil.Parse(p.HTML)
 
 	forLabels := map[string]bool{} // ids targeted by <label for=...> with text
@@ -69,7 +77,7 @@ func placeholderOnly(p rules.Page, next func() int) []rules.Finding {
 			return true
 		}
 		out = append(out, rules.Finding{
-			PageURL: p.URL, Selector: domutil.Selector(n), Snippet: domutil.OpeningTag(n), Sub: "placeholder-only", Fix: labelFix(n, next),
+			PageURL: p.URL, Selector: domutil.Selector(n), Snippet: domutil.OpeningTag(n), Sub: "placeholder-only", Fix: labelFix(n, next, taken),
 		})
 		return true
 	})
@@ -107,4 +115,16 @@ func hasName(n *html.Node, forLabels map[string]bool) bool {
 		}
 	}
 	return false
+}
+
+// pageIDs collects the id attributes of a page, so a suggested id does not clash with one (A3-F).
+func pageIDs(src string) map[string]bool {
+	m := map[string]bool{}
+	domutil.Walk(domutil.Parse(src), func(n *html.Node) bool {
+		if id, ok := domutil.Attr(n, "id"); ok {
+			m[id] = true
+		}
+		return true
+	})
+	return m
 }

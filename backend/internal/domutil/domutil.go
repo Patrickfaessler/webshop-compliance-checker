@@ -65,6 +65,23 @@ func Text(n *html.Node) string {
 	return b.String()
 }
 
+// VisibleText is Text without script, style, noscript, template and svg content: the words a visitor reads.
+// Text nodes are joined with spaces so words of neighbouring elements do not merge.
+func VisibleText(n *html.Node) string {
+	var b strings.Builder
+	Walk(n, func(c *html.Node) bool {
+		if IsElement(c, "script", "style", "noscript", "template", "svg", "head") {
+			return false
+		}
+		if c.Type == html.TextNode {
+			b.WriteString(c.Data)
+			b.WriteByte(' ')
+		}
+		return true
+	})
+	return b.String()
+}
+
 // Hidden reports whether n (or an ancestor) is hidden from all users by markup we can see without
 // computed styles: `hidden` attribute, aria-hidden="true" or inline display:none / visibility:hidden.
 // Limitation: stylesheet rules are not evaluated.

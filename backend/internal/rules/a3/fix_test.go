@@ -30,3 +30,25 @@ func TestA3Fix(t *testing.T) {
 		t.Errorf("escaping: %+v", f)
 	}
 }
+
+// Spec: A3-F — a cut-off snippet gives no id advice; radios do not reuse the group name; taken ids are not reused.
+func TestA3FixEdgeCases(t *testing.T) {
+	axe := func(tag string) *rules.AxeReport {
+		return &rules.AxeReport{Violations: []rules.AxeResult{{ID: "label", Nodes: []rules.AxeNode{{Selector: "input", HTML: tag}}}}}
+	}
+	cut := run(t, `<input id="q" placeholder="Menge > 1">`, axe(`<input id="q" placeholder="Menge `))
+	for _, f := range cut.Findings {
+		if f.Sub == "label" && (f.Fix == nil || f.Fix.Code != "" || f.Fix.NoteDe != `Beschriftung mit <label for="…"> und der id des Feldes ergänzen.`) {
+			t.Errorf("cut snippet: fix = %+v", f.Fix)
+		}
+	}
+	radio := run(t, `<input type="radio" name="color" value="rot">`, axe(`<input type="radio" name="color" value="rot">`))
+	if f := radio.Findings[0].Fix; f == nil || f.Code != "<label for=\"feld-1\">rot</label>\nid=\"feld-1\" am Feld ergänzen" ||
+		f.NoteDe != "Optionsgruppen zusätzlich mit <fieldset> und <legend> beschriften." {
+		t.Errorf("radio: fix = %+v", f)
+	}
+	taken := run(t, `<div id="email"></div><input name="email">`, axe(`<input name="email">`))
+	if f := taken.Findings[0].Fix; f == nil || f.Code != "<label for=\"feld-1\">Email</label>\nid=\"feld-1\" am Feld ergänzen" {
+		t.Errorf("taken id: fix = %+v", f)
+	}
+}

@@ -22,3 +22,16 @@ func TestA6Fix(t *testing.T) {
 		}
 	}
 }
+
+// Spec: A6-F — script and style text does not count for the language guess.
+func TestA6FixIgnoresScripts(t *testing.T) {
+	page := `<html><head><style>body { font: 1rem sans-serif } a:hover { color: red }</style>
+<script>window.dataLayer = window.dataLayer || []; function gtag(){ if (this && a in b) { for (var i = 0; i < 10; i++) { if (x || y) return this.is; } } } if (a) { for (k in o) { if (o[k] === undefined) delete o[k]; } }</script></head>
+<body><h1>Teehaus</h1><p>Willkommen in unserem Shop. Hier finden Sie die besten Tees aus aller Welt, und wir liefern schnell zu Ihnen nach Hause.</p>
+<p>Die Versandkosten sind ab einem Bestellwert von 40 Euro frei, und Sie können uns jederzeit fragen.</p>
+<script type="application/ld+json">{"@type":"Product","name":"the tea of the day is in the shop"}</script></body></html>`
+	r := check(t, page)
+	if f := r.Findings[0].Fix; f == nil || f.Code != `<html lang="de">` || f.NoteDe != "" {
+		t.Errorf("fix = %+v, want lang de without note", f)
+	}
+}

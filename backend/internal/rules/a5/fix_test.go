@@ -6,10 +6,10 @@ import (
 	"compliancechecker/internal/rules"
 )
 
-// Spec: A5-F — each A5 sub-rule gets its fix; the selector in the code is escaped.
+// Spec: A5-F — each A5 sub-rule gets its fix; the selector goes into the CSS unchanged.
 func TestA5Fix(t *testing.T) {
 	k := &rules.KeyboardReport{MaxPresses: 200, Presses: 10, Completed: true,
-		NoFocusStyle: []rules.KeyboardNode{{Selector: "#b"}, {Selector: `a[title="x"]`}},
+		NoFocusStyle: []rules.KeyboardNode{{Selector: "#b"}, {Selector: `a[title="x"]`}, {Selector: "html > body > a:nth-of-type(2)"}},
 		NotFocusable: []rules.KeyboardNode{{Selector: "#d"}},
 		Unreachable:  []rules.KeyboardNode{{Selector: "#u"}},
 		Traps:        []rules.KeyboardNode{{Selector: "#t"}},
@@ -25,8 +25,12 @@ func TestA5Fix(t *testing.T) {
 	if c := got["#b"].Code; c != "#b:focus-visible { outline: 2px solid currentColor; outline-offset: 2px; }" {
 		t.Errorf("no-focus-style code = %q", c)
 	}
-	if c := got[`a[title="x"]`].Code; c != "a[title=&#34;x&#34;]:focus-visible { outline: 2px solid currentColor; outline-offset: 2px; }" {
-		t.Errorf("escaped selector code = %q", c)
+	// the selector is CSS, not HTML: inserted unchanged so the rule works when pasted
+	if c := got[`a[title="x"]`].Code; c != `a[title="x"]:focus-visible { outline: 2px solid currentColor; outline-offset: 2px; }` {
+		t.Errorf("attribute selector code = %q", c)
+	}
+	if c := got["html > body > a:nth-of-type(2)"].Code; c != "html > body > a:nth-of-type(2):focus-visible { outline: 2px solid currentColor; outline-offset: 2px; }" {
+		t.Errorf("child selector code = %q", c)
 	}
 	if c := got["#d"].Code; c != `<button type="button">…</button>` {
 		t.Errorf("not-focusable code = %q", c)

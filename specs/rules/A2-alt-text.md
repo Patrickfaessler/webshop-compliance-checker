@@ -21,7 +21,8 @@ Bilder ohne Beschreibung sind für blinde Menschen unsichtbar. Jedes inhaltliche
 
 ## Fix templates
 Text for all sub-rules: `Beschreibe das Bild in wenigen Worten, z. B. mit dem Produktnamen.`
-- Product image (a heading or `[itemprop=name]` in the same card, max 4 ancestor levels): code `alt="{{productName}}"` (deterministic, trimmed, ≤ 80 characters).
+- Product image: code `alt="{{productName}}"` (deterministic, trimmed, ≤ 80 characters). The name is a heading or `[itemprop=name]` in the image's card: the closest of at most 4 ancestors, stopping at an ancestor with more than one image (no longer one card) and at body/main/header/footer/nav; a heading that comes before the image only counts inside the image's direct parent. The image is located by its `src`; when several images share that `src` (lazy-load placeholders), no name is used.
+- `svg-img-alt`: text `Gib der Grafik einen kurzen Namen.`, code `aria-label="Beschreibung der Grafik"`, note `Beschreibung bitte anpassen.`
 - Otherwise (incl. `filename-alt`): code `alt="Beschreibung des Bildes"`, note `Beschreibung bitte anpassen.`
 - Decorative images are mentioned in the note when no product name is found: `Beschreibung bitte anpassen. Rein dekorative Bilder bekommen alt="".`
 - AI suggestion only on user request (later, D-3).

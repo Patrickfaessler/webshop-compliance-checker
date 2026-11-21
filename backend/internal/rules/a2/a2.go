@@ -9,6 +9,7 @@ import (
 	"golang.org/x/net/html"
 
 	"compliancechecker/internal/domutil"
+	"compliancechecker/internal/fixes"
 	"compliancechecker/internal/rules"
 	"compliancechecker/internal/rules/axecheck"
 )
@@ -39,6 +40,9 @@ func (Rule) Check(_ context.Context, in rules.Input) (rules.Result, error) {
 	res := axecheck.Check(axeIDs, in, func(p rules.Page, n rules.AxeNode) *rules.Fix {
 		if docs[p.URL] == nil {
 			docs[p.URL] = domutil.Parse(p.HTML)
+		}
+		if t := fixes.Tag(n.HTML); t != nil && domutil.IsElement(t, "svg") {
+			return svgFix()
 		}
 		return fixFor(imgBySrc(docs[p.URL], n.HTML))
 	})

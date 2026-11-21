@@ -72,7 +72,7 @@ URL, selector, sub-rule, snippet (opening tag).
 Nicht jeder kann eine Maus benutzen. Alle Bedienelemente müssen mit der Tab-Taste erreichbar sein und man muss sehen, wo man gerade ist.
 
 ## Fix templates
-- `no-focus-style`: text `Mach sichtbar, welches Element den Fokus hat.`, code `{{selector}}:focus-visible { outline: 2px solid currentColor; outline-offset: 2px; }`
+- `no-focus-style`: text `Mach sichtbar, welches Element den Fokus hat.`, code (selector inserted raw, it is CSS) `{{selector}}:focus-visible { outline: 2px solid currentColor; outline-offset: 2px; }`
 - `not-focusable`: text `Verwende ein <button>-Element. Alternativ role="button" und tabindex="0" ergänzen und Enter/Leertaste per Skript bedienen.`, code `<button type="button">…</button>`
 - `unreachable`: text `Mach das Element mit der Tab-Taste erreichbar: entferne tabindex="-1" oder Skripte, die den Fokus wegnehmen.`, no code
 - `keyboard-trap`: text `Sorge dafür, dass man das Element mit der Tab-Taste wieder verlassen kann.`, no code
@@ -87,6 +87,6 @@ Nicht jeder kann eine Maus benutzen. Alle Bedienelemente müssen mit der Tab-Tas
 - A5-7: limit reached on a page, no finding → `passed` with the note above; `unreachable` is not judged there.
 - A5-8: the Tab limit from the form is used; values outside 50–1000 are rejected with a German message.
 - A5-9: a probe error keeps the page (HTML, axe result) without a keyboard result. When the probe's time
-- A5-F: every finding carries a fix (origin `template`, non-empty German text); page values in the code are HTML-escaped.
   (30 s) runs out during the Tab loop, the presses so far count like a reached limit (A5-7, the note names the
   presses actually made).
+- A5-F: every finding carries a fix (origin `template`, non-empty German text); the selector goes into the CSS code unchanged (CSS, not HTML).

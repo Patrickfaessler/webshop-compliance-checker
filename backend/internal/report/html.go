@@ -269,29 +269,32 @@ func CropJPEG(img image.Image, b Box, pageW float64) ([]byte, bool) {
 	return out, ok
 }
 
-// FindingCrop crops the screenshot of a finding's page around its element; ok is false when the finding is
-// unknown, has no box, or its page has no screenshot.
-func FindingCrop(sc scan.Scan, findingID string) ([]byte, bool) {
-	for _, f := range sc.Findings {
-		if f.ID != findingID {
+// FindingCrops crops the element of every finding that has a box on a captured page, decoding each page
+// screenshot once (F8). The map is keyed by finding id.
+func FindingCrops(sc scan.Scan) map[string][]byte {
+	out := map[string][]byte{}
+	for _, sh := range sc.Shots {
+		if len(sh.Image) == 0 || sh.Width <= 0 {
 			continue
 		}
-		if f.Box == nil || f.Position != "element" {
-			return nil, false
-		}
-		for _, sh := range sc.Shots {
-			if sh.URL != f.URL || len(sh.Image) == 0 || sh.Width <= 0 {
+		var img image.Image
+		for _, f := range sc.Findings {
+			if f.URL != sh.URL || f.Box == nil || f.Position != "element" {
 				continue
 			}
-			img, err := jpeg.Decode(bytes.NewReader(sh.Image))
-			if err != nil {
-				return nil, false
+			if img == nil {
+				decoded, err := jpeg.Decode(bytes.NewReader(sh.Image))
+				if err != nil {
+					break
+				}
+				img = decoded
 			}
-			return CropJPEG(img, Box{X: f.Box.X, Y: f.Box.Y, Width: f.Box.Width, Height: f.Box.Height}, float64(sh.Width))
+			if b, ok := CropJPEG(img, Box{X: f.Box.X, Y: f.Box.Y, Width: f.Box.Width, Height: f.Box.Height}, float64(sh.Width)); ok {
+				out[f.ID] = b
+			}
 		}
-		return nil, false
 	}
-	return nil, false
+	return out
 }
 
 // HasCrop says whether FindingCrop can produce an image for f, without decoding.

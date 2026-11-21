@@ -125,7 +125,7 @@ func openingTag(n *html.Node) string {
 
 // langFix suggests the lang attribute from the page text (spec A6 "Fix templates").
 func langFix(htmlEl *html.Node) *rules.Fix {
-	lang, sure := fixes.DetectLang(domutil.Text(htmlEl))
+	lang, sure := fixes.DetectLang(domutil.VisibleText(htmlEl))
 	f := &rules.Fix{TextDe: "Setze das Attribut lang im html-Element."}
 	if !sure {
 		lang, f.NoteDe = "de", "Sprache bitte anpassen."

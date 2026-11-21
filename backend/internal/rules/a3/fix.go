@@ -12,28 +12,39 @@ import (
 	"compliancechecker/internal/rules"
 )
 
-// labelFix builds the A3 fix for a form field (spec A3 "Fix templates"). next numbers fields that have
-// neither id nor name (feld-1, feld-2, … per page). field may be nil (snippet not parsable).
-func labelFix(field *html.Node, next func() int) *rules.Fix {
+// labelFix builds the A3 fix for a form field (spec A3 "Fix templates"). next numbers fields that need a new
+// id (feld-1, feld-2, … per page); taken reports ids that already exist on the page. field is nil when the
+// snippet could not be read (e.g. cut off by axe): then no code is suggested.
+func labelFix(field *html.Node, next func() int, taken func(string) bool) *rules.Fix {
+	const text = "Gib dem Feld eine sichtbare Beschriftung."
+	if field == nil {
+		return &rules.Fix{TextDe: text, NoteDe: `Beschriftung mit <label for="…"> und der id des Feldes ergänzen.`}
+	}
 	attr := func(k string) string {
-		if field == nil {
-			return ""
-		}
 		v, _ := domutil.Attr(field, k)
 		return strings.TrimSpace(v)
 	}
 	id, name, ph := attr("id"), attr("name"), attr("placeholder")
+	typ := strings.ToLower(attr("type"))
+	group := typ == "radio" || typ == "checkbox" // the name is shared by the whole group
 	label, note := ph, ""
-	if label == "" && name != "" {
+	if group {
+		label, note = attr("value"), "Optionsgruppen zusätzlich mit <fieldset> und <legend> beschriften."
+	}
+	if label == "" && name != "" && !group {
 		label = humanize(name)
 	}
 	if label == "" {
-		label, note = "Beschriftung", "Beschriftungstext bitte anpassen."
+		label = "Beschriftung"
+		if note == "" {
+			note = "Beschriftungstext bitte anpassen."
+		}
 	}
 	missingID := id == ""
 	if missingID {
-		id = name
-		if id == "" {
+		if name != "" && !group && !taken(name) {
+			id = name
+		} else {
 			id = "feld-" + strconv.Itoa(next())
 		}
 	}
@@ -42,7 +53,7 @@ func labelFix(field *html.Node, next func() int) *rules.Fix {
 	if missingID {
 		code += "\n" + fixes.Fill(`id="{{id}}" am Feld ergänzen`, vals)
 	}
-	return &rules.Fix{TextDe: "Gib dem Feld eine sichtbare Beschriftung.", Code: code, NoteDe: note}
+	return &rules.Fix{TextDe: text, Code: code, NoteDe: note}
 }
 
 // humanize turns a field name into a label: "e_mail" → "E mail".
