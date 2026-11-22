@@ -129,6 +129,16 @@ func TestMarkPosition(t *testing.T) {
 	}
 }
 
+// Spec: RP-7 — a frame at the left image edge gets its number badge inside, so it is not cut off.
+func TestMarkBadgeInsideAtLeftEdge(t *testing.T) {
+	if markIn(Box{X: 128, Y: 0, Width: 100, Height: 20}, 1280, 800).Inside {
+		t.Error("badge inside for a frame away from the edge")
+	}
+	if !markIn(Box{X: 32, Y: 0, Width: 1000, Height: 20}, 1064, 800).Inside {
+		t.Error("badge outside for a frame at the left edge")
+	}
+}
+
 // Spec: F13, RP-1 — JSON has positions and page sizes but no screenshot data.
 func TestJSONHasPositionsNotImages(t *testing.T) {
 	r, _ := Build(visualScan(t), metas, t0)

@@ -25,6 +25,15 @@ func TestA3Fix(t *testing.T) {
 		f.NoteDe != "Beschriftungstext bitte anpassen." {
 		t.Errorf("none: %+v", f)
 	}
+	search := run(t, `<input type="search" name="q">`, axe(`<input type="search" name="q">`))
+	if f := search.Findings[0].Fix; f == nil || f.Code != "<label for=\"q\">Suche</label>\nid=\"q\" am Feld ergänzen" {
+		t.Errorf("short name, search: %+v", f)
+	}
+	short := run(t, `<input type="text" name="nl">`, axe(`<input type="text" name="nl">`))
+	if f := short.Findings[0].Fix; f == nil || f.Code != "<label for=\"nl\">Beschriftung</label>\nid=\"nl\" am Feld ergänzen" ||
+		f.NoteDe != "Beschriftungstext bitte anpassen." {
+		t.Errorf("short name: %+v", f)
+	}
 	evil := run(t, `<input id="q" placeholder='"><script>x</script>'>`, nil)
 	if f := evil.Findings[0].Fix; f == nil || f.Code != `<label for="q">&#34;&gt;&lt;script&gt;x&lt;/script&gt;</label>` {
 		t.Errorf("escaping: %+v", f)

@@ -57,7 +57,9 @@ printed from the same HTML (ADR-7). It builds on the JSON report (`internal/repo
 - **RP-7 Page section.** Left: screenshot with numbered frames (positions in % of the image, so it scales). Right:
   finding cards with number, severity (text, not colour only), rule ID and German name, explanation (`summaryDe`),
   location (URL, selector, snippet), position note (RP-3), and for `element` a cropped detail of the area.
-  Findings are numbered 1…n across the whole report.
+  Findings are numbered 1…n across the whole report. The number badge sits left of its frame; when the frame starts
+  in the left 8 % of the image (screenshot or crop) the badge sits inside the frame's top-left corner instead, so it is
+  never cut off.
 - **RP-8 Linking without script.** A frame links to its card (`#f-<n>`) and the card links back to the frame
   (`#m-<n>`); the target is highlighted with CSS `:target`.
 - **RP-9 Accessible report (N7).** Real headings in order, contrast ≥ 4.5:1, every frame has a text label

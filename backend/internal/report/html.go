@@ -63,6 +63,7 @@ type sectionView struct {
 type markView struct {
 	N        int
 	Style    template.CSS // left/top/width/height in percent of the image
+	Inside   bool         // badge inside the frame: the frame starts at the left image edge (RP-7)
 	Label    string
 	SevClass string
 }
@@ -253,7 +254,7 @@ func pct(v, total float64) string {
 func markIn(b Box, w, h float64) markView {
 	// safe: only numbers formatted by pct
 	return markView{Style: template.CSS(fmt.Sprintf("left:%s;top:%s;width:%s;height:%s",
-		pct(b.X, w), pct(b.Y, h), pct(b.Width, w), pct(b.Height, h)))}
+		pct(b.X, w), pct(b.Y, h), pct(b.Width, w), pct(b.Height, h))), Inside: w > 0 && b.X < 0.08*w}
 }
 
 // crop cuts the area around a box out of the screenshot (with some margin) and returns it with the box position

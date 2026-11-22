@@ -52,6 +52,7 @@ th { background: var(--soft); }
   background: rgba(194, 0, 47, .08); text-decoration: none; line-height: 1; }
 .mark span, .cropmark span { position: absolute; right: 100%; top: -3px; margin-right: 2px; background: var(--mark); color: var(--mark-ink);
   font: 700 12px/1 system-ui, Arial, sans-serif; padding: 3px 5px; border-radius: 4px 0 0 4px; }
+.mark[data-badge="in"] span, .cropmark[data-badge="in"] span { right: auto; left: 0; top: 0; margin: 0; border-radius: 0 0 4px 0; }
 .mark:target, .mark:hover { outline: 4px solid var(--focus); background: rgba(255, 176, 0, .2); }
 .truncated { font-size: .9rem; color: var(--muted); padding: 8px 12px; line-height: 1.4; }
 .cards { list-style: none; margin: 0; padding: 0; display: grid; gap: 14px; }
@@ -153,7 +154,7 @@ footer { margin-top: 40px; }
       <div class="shotcol">
         <div class="shotbox">
           <img src="{{.ShotSrc}}" alt="{{.ShotAlt}}">
-          {{range .Marks}}<a class="mark" id="m-{{.N}}" href="#f-{{.N}}" style="{{.Style}}" aria-label="{{.Label}}"><span aria-hidden="true">{{.N}}</span></a>{{end}}
+          {{range .Marks}}<a class="mark" id="m-{{.N}}" href="#f-{{.N}}"{{if .Inside}} data-badge="in"{{end}} style="{{.Style}}" aria-label="{{.Label}}"><span aria-hidden="true">{{.N}}</span></a>{{end}}
         </div>
         {{if .Truncated}}<p class="truncated">Die Seite ist länger als der Screenshot; er zeigt nur den oberen Teil.</p>{{end}}
       </div>
@@ -170,7 +171,7 @@ footer { margin-top: 40px; }
           </div>
           {{if .Summary}}<p>{{.Summary}}</p>{{end}}
           {{if .PosNote}}<p class="posnote">{{.PosNote}}</p>{{end}}
-          {{if .HasCrop}}<div class="crop"><img src="{{.CropSrc}}" alt="{{.CropAlt}}"><span class="cropmark" style="{{.CropMark.Style}}"><span aria-hidden="true">{{.N}}</span></span></div>{{end}}
+          {{if .HasCrop}}<div class="crop"><img src="{{.CropSrc}}" alt="{{.CropAlt}}"><span class="cropmark"{{if .CropMark.Inside}} data-badge="in"{{end}} style="{{.CropMark.Style}}"><span aria-hidden="true">{{.N}}</span></span></div>{{end}}
           <p class="loc">Stelle: <code>{{.Selector}}</code></p>
           {{if .Snippet}}<pre><code>{{.Snippet}}</code></pre>{{end}}
           {{with .Fix}}<div class="fix">

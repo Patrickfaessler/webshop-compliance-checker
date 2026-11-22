@@ -31,8 +31,11 @@ func labelFix(field *html.Node, next func() int, taken func(string) bool) *rules
 	if group {
 		label, note = attr("value"), "Optionsgruppen zusätzlich mit <fieldset> und <legend> beschriften."
 	}
-	if label == "" && name != "" && !group {
+	if label == "" && !group && letters(name) >= 3 {
 		label = humanize(name)
+	}
+	if label == "" && typ == "search" {
+		label = "Suche"
 	}
 	if label == "" {
 		label = "Beschriftung"
@@ -64,4 +67,15 @@ func humanize(name string) string {
 		r[0] = unicode.ToUpper(r[0])
 	}
 	return string(r)
+}
+
+// letters counts the letters in a field name; names with fewer than 3 make no useful label ("q").
+func letters(name string) int {
+	n := 0
+	for _, r := range name {
+		if unicode.IsLetter(r) {
+			n++
+		}
+	}
+	return n
 }
