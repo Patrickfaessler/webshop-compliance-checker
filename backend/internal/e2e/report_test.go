@@ -65,6 +65,12 @@ func scanShop(t *testing.T, ctx context.Context, c *crawler.Crawler, base, path 
 	for i, p := range res.Pages {
 		order[i] = p.URL
 	}
+	sc.KeyboardMaxPresses = opt.Keyboard.MaxPresses
+	for _, p := range res.Pages {
+		if p.Keyboard != nil {
+			sc.KeyboardPages = append(sc.KeyboardPages, p.URL) // as the worker does, so the header counts probed pages
+		}
+	}
 	sc.Shots, sc.Findings = worker.CrawlAnnotator{Crawler: c}.Annotate(ctx, sc.Findings, order)
 	return sc, metas
 }
